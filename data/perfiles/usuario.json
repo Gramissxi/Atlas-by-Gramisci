@@ -1,0 +1,16 @@
+{
+    "nombre": "Usuario",
+    "objetivo": "Data Engineer",
+    "horas_por_semana": 10,
+    "roadmap_actual": "",
+    "paso_actual": 1,
+    "tema_actual": "SQL avanzado",
+    "avance_porcentaje": 10,
+    "habilidades": [
+        "SQL básico",
+        "Python básico"
+    ],
+    "evaluaciones_realizadas": 0,
+    "ultimo_acceso": "",
+    "documentos_indexados": 0
+}
