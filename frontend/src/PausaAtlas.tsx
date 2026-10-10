@@ -58,11 +58,6 @@ export default function PausaAtlas({etapa}:{etapa:Etapa}) {
         <button className="atlas-boton" onClick={siguiente}>Otro desafío <ArrowRight size={16}/></button>
       </div>
     </div>
-    <div className="atlas-caja" style={{marginTop:18}}>
-      <h2 style={{fontSize:21,margin:"0 0 8px"}}>Videos breves para acompañarte</h2>
-      <p>{etapa==="primaria"?"Pensados para primaria: animaciones cortas sobre probar, equivocarse y volver a intentar.":"Pensados para secundaria: estrategias para organizar el estudio, afrontar frustraciones y descansar."}</p>
-      <div className="atlas-aviso">Todavía no hay videos incluidos. Para que funcionen sin Internet, deberán descargarse previamente, contar con permisos de uso y estar revisados por docentes. Nunca se reproducirán automáticamente según tu estado de ánimo.</div>
-    </div>
     <p style={{marginTop:18,fontSize:13,color:"#526c67"}}><RefreshCw size={14} style={{display:"inline",verticalAlign:"middle"}}/> Los desafíos son ejemplos locales; más adelante podrán reemplazarse por actividades aprobadas para cada curso.</p>
   </section>;
 }
