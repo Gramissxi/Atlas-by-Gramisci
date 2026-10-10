@@ -20,6 +20,13 @@ class ManejadorAtlas(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(cuerpo)
 
+    def do_GET(self):
+        """Comprobacion liviana: no inicia Ollama ni consulta la base de datos."""
+        if self.path == "/health":
+            self._enviar_json({"estado": "ok", "servicio": "atlas-api"})
+            return
+        self._enviar_json({"error": "Ruta no encontrada"}, estado=404)
+
     def do_OPTIONS(self):
         self._enviar_json({"ok": True})
 
