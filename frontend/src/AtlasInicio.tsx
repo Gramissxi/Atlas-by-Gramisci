@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, BookOpen, Calculator, CheckCircle2, ClipboardList, FileText, GraduationCap, Leaf, MessageCircle, Settings, Sparkles, Upload, Users, Globe2, Menu, X } from "lucide-react";
 import AppAnterior from "./App";
+import PausaAtlas from "./PausaAtlas";
 import "./atlas-inicio.css";
 
 type Etapa = "primaria" | "secundaria";
-type Pantalla = "inicio" | "materias" | "tutor" | "docente" | "anterior";
+type Pantalla = "inicio" | "materias" | "tutor" | "docente" | "pausa" | "anterior";
 const materias = [
   { id: "mat", nombre: "Matemática", tema: "Fracciones y números", icono: Calculator, color: "azul" },
   { id: "nat", nombre: "Ciencias Naturales", tema: "Los seres vivos", icono: Leaf, color: "verde" },
@@ -27,6 +28,7 @@ export default function AtlasInicio() {
     { id: "inicio" as Pantalla, nombre: "Inicio", icono: GraduationCap },
     { id: "materias" as Pantalla, nombre: "Mis materias", icono: BookOpen },
     { id: "tutor" as Pantalla, nombre: "Tutor Atlas", icono: MessageCircle },
+    { id: "pausa" as Pantalla, nombre: "Pausa y desafíos", icono: Sparkles },
     { id: "docente" as Pantalla, nombre: "Espacio docente", icono: Users },
   ];
   return <div className={`atlas-nuevo atlas-${etapa}`}>
@@ -55,6 +57,7 @@ export default function AtlasInicio() {
       </>}
       {pantalla === "materias" && <section className="atlas-pagina"><span className="atlas-sobrelinea">Mis materias</span><h1>Aprendé paso a paso</h1><p>Seleccioná una materia. Los temas escolares son ejemplos visuales; todavía no están conectados a cursos reales.</p><div className="atlas-selector-materias">{materias.map(m => <button key={m.id} className={materia === m.id ? "elegida" : ""} onClick={() => setMateria(m.id)}>{m.nombre}</button>)}</div><div className="atlas-leccion"><div className={`atlas-leccion-icono atlas-${actual.color}`}><actual.icono size={32}/></div><div><span className="atlas-sobrelinea">{etapa === "primaria" ? "Nivel primario" : "Nivel secundario"}</span><h2>{actual.nombre}</h2><p>{actual.tema}</p><div className="atlas-aviso">Las rutas se mostrarán cuando el docente cargue y apruebe los materiales.</div><button className="atlas-boton" onClick={() => navegar("tutor")}>Abrir tutor de esta materia <ArrowRight size={16}/></button></div></div></section>}
       {pantalla === "tutor" && <section className="atlas-pagina atlas-pagina-chat"><span className="atlas-sobrelinea">Tutor educativo</span><h1>Preguntale a Atlas</h1><p>Las consultas deberán estar limitadas a los documentos aprobados de cada materia.</p><label className="atlas-campo-label" htmlFor="materia-tutor">Materia</label><select id="materia-tutor" value={materia} onChange={e => setMateria(e.target.value)}>{materias.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}</select><div className="atlas-mensaje"><Sparkles size={21}/><span>¡Hola! Soy Atlas. Cuando conectemos tus materias reales, podré ayudarte usando únicamente el material autorizado por tu docente.</span></div><form onSubmit={e=>{e.preventDefault();if(texto.trim()) navegar("anterior");}}><label htmlFor="pregunta-atlas">Escribí tu pregunta</label><div className="atlas-pregunta"><input id="pregunta-atlas" value={texto} onChange={e=>setTexto(e.target.value)} placeholder="Por ejemplo: ¿me explicás este tema?"/><button type="submit" disabled={!texto.trim()}>Abrir motor actual <ArrowRight size={16}/></button></div></form><div className="atlas-aviso">Esta es una vista de diseño. Para probar el motor documental existente, usá «Abrir motor actual». La pregunta escrita aún no se transfiere automáticamente.</div></section>}
+      {pantalla === "pausa" && <PausaAtlas etapa={etapa}/>}
       {pantalla === "docente" && <section className="atlas-pagina"><span className="atlas-sobrelinea">Espacio docente · Vista preliminar</span><h1>Organizá tus clases</h1><p>Un lugar para preparar materiales y actividades que luego estarán disponibles para tus estudiantes.</p><div className="atlas-tarjetas-docente"><article><FileText/><h3>Materiales</h3><p>Subí PDFs y administrá los documentos de cada curso.</p></article><article><Sparkles/><h3>Rutas y actividades</h3><p>Generá propuestas y revisalas antes de publicarlas.</p></article><article><CheckCircle2/><h3>Seguimiento</h3><p>Consultá actividades completadas y temas a reforzar.</p></article></div><button className="atlas-boton" onClick={() => navegar("anterior")}><Upload size={17}/> Abrir herramientas actuales</button></section>}
       <footer className="atlas-pie">Atlas · Proyecto educativo gratuito · Vista preliminar sin datos reales de estudiantes</footer>
     </main>
