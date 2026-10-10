@@ -1,14 +1,13 @@
-from services.cliente_ollama import consultar_modelo
+﻿from services.cliente_ollama import consultar_modelo
 
 
 class CuradorRuta:
-
     def ejecutar(self, objetivo_usuario):
-
         prompt = f"""
-Eres el agente Curador de Ruta de Aprendizaje de Pocket Mentor AI.
+Eres el agente Curador de Ruta de Atlas.
 
-Tu función es ayudar a estudiantes a alcanzar objetivos tecnológicos.
+Atlas es una Encarta moderna offline-first: primero usa la biblioteca local del
+estudiante y, cuando hay internet, complementa con fuentes externas curadas.
 
 Objetivo del estudiante:
 
@@ -20,19 +19,12 @@ Debes devolver:
 2. Habilidades necesarias.
 3. Orden recomendado de aprendizaje.
 4. Proyectos sugeridos.
-5. Posibles brechas de conocimiento.
+5. Brechas de conocimiento.
+6. Que informacion conviene buscar en la biblioteca local.
+7. Que informacion podria complementarse con internet cuando este disponible.
 
-NO generes cronogramas ni planes semanales.
-
-Tu única responsabilidad es definir:
-
-- habilidades necesarias
-- orden de aprendizaje
-- brechas de conocimiento
-- proyectos sugeridos
-
-El cronograma será responsabilidad de otro agente.
-Responde siempre en español.
+No generes cronogramas ni planes semanales.
+Responde siempre en espanol.
 """
 
         return consultar_modelo(prompt)

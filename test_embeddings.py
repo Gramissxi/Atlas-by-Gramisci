@@ -1,22 +1,14 @@
+﻿from services.fragmentacion import dividir_texto_en_fragmentos
+from services.incrustaciones import generar_incrustacion
 from services.lector_pdf import leer_pdf
-from services.chunking import dividir_texto
-from services.embeddings import generar_embedding
 
 
 texto = leer_pdf(
     "data/documentos/calculo/Modelo de examen - C1.pdf"
 )
 
-chunks = dividir_texto(texto)
+fragmentos = dividir_texto_en_fragmentos(texto)
+incrustacion = generar_incrustacion(fragmentos[0])
 
-embedding = generar_embedding(
-    chunks[0]
-)
-
-print(
-    f"Dimensión embedding: {len(embedding)}"
-)
-
-print(
-    embedding[:10]
-)
+print(f"Dimension incrustacion: {len(incrustacion)}")
+print(incrustacion[:10])

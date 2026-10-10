@@ -1,82 +1,55 @@
-from agents.orquestador import Orquestador
-from agents.curador_ruta import CuradorRuta
-from agents.generador_plan import GeneradorPlan
+﻿from agents.curador_ruta import CuradorRuta
 from agents.evaluador import Evaluador
+from agents.generador_plan import GeneradorPlan
+from agents.orquestador import Orquestador
+from services.sincronizacion import describir_modo_atlas, hay_conexion_disponible
 
 
 def main():
+    print("\n=== Atlas ===\n")
 
-    print("\n=== Pocket Mentor AI ===\n")
+    estado_modo = describir_modo_atlas(hay_conexion_disponible())
+    print(f"Modo actual: {estado_modo['modo']}")
+    print(estado_modo["descripcion"])
 
-    consulta = input(
-        "¿Cómo puedo ayudarte?\n\n"
-    )
+    consulta = input("\nComo puedo ayudarte?\n\n")
 
     orquestador = Orquestador()
-
     perfil = orquestador.obtener_contexto_usuario()
 
     print("\n=== PERFIL ACTUAL ===\n")
     print(perfil)
 
-    intencion = orquestador.detectar_intencion(
-        consulta
-    )
+    intencion = orquestador.detectar_intencion(consulta)
+    print(f"\n[ORQUESTADOR] Intencion detectada: {intencion}\n")
 
-    print(
-        f"\n[ORQUESTADOR] Intención detectada: {intencion}\n"
-    )
-
-    # CURADOR
     if intencion == "curador":
-
         agente = CuradorRuta()
+        respuesta = agente.ejecutar(consulta)
 
-        respuesta = agente.ejecutar(
-            consulta
-        )
-
-    # GENERADOR DE PLAN
     elif intencion == "generador":
-
-        roadmap = input(
-            "\nPegá tu roadmap:\n\n"
-        )
-
-        horas = input(
-            "\nHoras por semana:\n\n"
-        )
+        ruta_aprendizaje = input("\nPega tu ruta de aprendizaje:\n\n")
+        horas = input("\nHoras por semana:\n\n")
 
         agente = GeneradorPlan()
-
         respuesta = agente.ejecutar(
             consulta,
-            roadmap,
-            horas
+            ruta_aprendizaje,
+            horas,
         )
 
-    # EVALUADOR
     elif intencion == "evaluador":
-
-        roadmap = input(
-            "\nPegá tu roadmap:\n\n"
-        )
-
-        plan = input(
-            "\nPegá tu plan:\n\n"
-        )
+        ruta_aprendizaje = input("\nPega tu ruta de aprendizaje:\n\n")
+        plan = input("\nPega tu plan:\n\n")
 
         agente = Evaluador()
-
         respuesta = agente.ejecutar(
             consulta,
-            roadmap,
-            plan
+            ruta_aprendizaje,
+            plan,
         )
 
-    # CONTINUAR
     elif intencion == "continuar":
-
         respuesta = f"""
 Objetivo actual: {perfil['objetivo']}
 
@@ -91,13 +64,11 @@ Evaluaciones realizadas:
 {perfil['evaluaciones_realizadas']}
 """
 
-    # FALLBACK
     else:
-
         respuesta = """
-No pude identificar exactamente qué necesitás.
+No pude identificar exactamente que necesitas.
 
-Probá con:
+Proba con:
 - Quiero convertirme en Data Engineer
 - Generar un plan de estudio
 - Quiero practicar SQL

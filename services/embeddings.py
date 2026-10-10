@@ -1,11 +1,5 @@
-import ollama
+﻿from services.incrustaciones import generar_incrustacion
 
 
 def generar_embedding(texto):
-
-    respuesta = ollama.embeddings(
-        model="nomic-embed-text",
-        prompt=texto
-    )
-
-    return respuesta["embedding"]
+    return generar_incrustacion(texto)

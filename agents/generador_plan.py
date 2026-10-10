@@ -1,29 +1,26 @@
-from services.cliente_ollama import consultar_modelo
+﻿from services.cliente_ollama import consultar_modelo
 
 
 class GeneradorPlan:
-
     def ejecutar(
         self,
         objetivo_usuario,
-        roadmap_generado,
-        horas_por_semana
+        ruta_aprendizaje,
+        horas_por_semana,
     ):
-
         prompt = f"""
-Eres el agente Generador de Plan de Pocket Mentor AI.
+Eres el agente Generador de Plan de Atlas.
 
-Tu trabajo NO es decidir qué tecnologías aprender.
+Tu trabajo no es decidir que tecnologias aprender: tu trabajo es convertir una
+ruta de aprendizaje ya curada en un plan realista.
 
-Tu trabajo es construir un cronograma realista utilizando:
-
-OBJETIVO DEL USUARIO:
+Objetivo del usuario:
 {objetivo_usuario}
 
-ROADMAP DEFINIDO POR EL CURADOR:
-{roadmap_generado}
+Ruta de aprendizaje definida:
+{ruta_aprendizaje}
 
-HORAS DISPONIBLES:
+Horas disponibles:
 {horas_por_semana} horas por semana
 
 Debes generar:
@@ -31,15 +28,16 @@ Debes generar:
 1. Plan de 12 semanas.
 2. Objetivos semanales.
 3. Horas recomendadas por tema.
-4. Actividades prácticas.
+4. Actividades practicas.
 5. Proyecto final sugerido.
+6. Recursos locales que Atlas deberia priorizar.
 
-IMPORTANTE:
+Importante:
 
-- No cambies el roadmap recibido.
+- No cambies la ruta recibida.
 - Organiza el aprendizaje progresivamente.
-- Sé realista para la cantidad de horas disponible.
-- Responde en español.
+- Se realista para la cantidad de horas disponible.
+- Responde en espanol.
 """
 
         return consultar_modelo(prompt)

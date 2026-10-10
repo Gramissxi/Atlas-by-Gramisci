@@ -1,6 +1,4 @@
-from services.base_datos import (
-    obtener_conexion
-)
+﻿from services.repositorio_conocimiento import guardar_fragmento_conocimiento
 
 
 def insertar_chunk(
@@ -8,42 +6,12 @@ def insertar_chunk(
     archivo,
     numero_chunk,
     contenido,
-    embedding
+    embedding,
 ):
-
-    conn = obtener_conexion()
-
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        INSERT INTO chunks_conocimiento
-        (
-            materia,
-            archivo,
-            numero_chunk,
-            contenido,
-            embedding
-        )
-        VALUES
-        (
-            %s,
-            %s,
-            %s,
-            %s,
-            %s
-        )
-        """,
-        (
-            materia,
-            archivo,
-            numero_chunk,
-            contenido,
-            embedding
-        )
+    guardar_fragmento_conocimiento(
+        materia=materia,
+        documento=archivo,
+        numero_fragmento=numero_chunk,
+        contenido=contenido,
+        incrustacion=embedding,
     )
-
-    conn.commit()
-
-    cur.close()
-    conn.close()

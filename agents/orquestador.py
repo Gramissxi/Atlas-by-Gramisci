@@ -1,20 +1,18 @@
-from services.perfil_usuario import cargar_perfil
+﻿from services.perfil_usuario import cargar_perfil
 
 
 class Orquestador:
-
     def detectar_intencion(self, consulta):
-
         consulta = consulta.lower()
 
         if any(
             palabra in consulta
             for palabra in [
-                "roadmap",
                 "ruta",
                 "aprender",
                 "convertirme",
-                "carrera"
+                "carrera",
+                "camino",
             ]
         ):
             return "curador"
@@ -24,7 +22,7 @@ class Orquestador:
             for palabra in [
                 "plan",
                 "cronograma",
-                "semanal"
+                "semanal",
             ]
         ):
             return "generador"
@@ -35,7 +33,7 @@ class Orquestador:
                 "evaluar",
                 "examen",
                 "preguntas",
-                "practicar"
+                "practicar",
             ]
         ):
             return "evaluador"
@@ -45,9 +43,5 @@ class Orquestador:
 
         return "curador"
 
-
     def obtener_contexto_usuario(self):
-
-        perfil = cargar_perfil()
-
-        return perfil
+        return cargar_perfil()

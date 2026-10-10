@@ -1,49 +1,35 @@
-from pathlib import Path
+﻿from pathlib import Path
 
+from services.fragmentacion import dividir_texto_en_fragmentos
+from services.incrustaciones import generar_incrustacion
 from services.lector_pdf import leer_pdf
-from services.chunking import dividir_texto
-from services.embeddings import generar_embedding
-from services.vector_store import insertar_chunk
+from services.repositorio_conocimiento import guardar_fragmento_conocimiento
 
 
-def indexar_pdf(
-    ruta_pdf,
-    materia
-):
-
-    print(f"\nIndexando: {ruta_pdf}")
+def indexar_pdf(ruta_pdf, materia):
+    print(f"\nIndexando documento: {ruta_pdf}")
 
     texto = leer_pdf(ruta_pdf)
+    fragmentos = dividir_texto_en_fragmentos(texto)
 
-    chunks = dividir_texto(texto)
+    print(f"Fragmentos generados: {len(fragmentos)}")
 
-    print(
-        f"Chunks generados: {len(chunks)}"
-    )
+    nombre_documento = Path(ruta_pdf).name
 
-    archivo = Path(ruta_pdf).name
-
-    for numero_chunk, chunk in enumerate(
-        chunks,
-        start=1
+    for numero_fragmento, contenido_fragmento in enumerate(
+        fragmentos,
+        start=1,
     ):
+        incrustacion = generar_incrustacion(contenido_fragmento)
 
-        embedding = generar_embedding(
-            chunk
-        )
-
-        insertar_chunk(
+        guardar_fragmento_conocimiento(
             materia=materia,
-            archivo=archivo,
-            numero_chunk=numero_chunk,
-            contenido=chunk,
-            embedding=embedding
+            documento=nombre_documento,
+            numero_fragmento=numero_fragmento,
+            contenido=contenido_fragmento,
+            incrustacion=incrustacion,
         )
 
-        print(
-            f"Chunk {numero_chunk} guardado"
-        )
+        print(f"Fragmento {numero_fragmento} guardado")
 
-    print(
-        f"\nDocumento indexado correctamente: {archivo}"
-    )
+    print(f"\nDocumento indexado correctamente: {nombre_documento}")
