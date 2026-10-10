@@ -8,6 +8,11 @@ No sube el PDF a Internet ni lo agrega al repositorio.
 Es una línea base TF-IDF, NO mide embeddings, Ollama ni la API.
 """
 import argparse
+import sys
+from pathlib import Path
+
+# Permite ejecutarlo como archivo desde la raíz del repositorio.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pypdf import PdfReader
 from sklearn.feature_extraction.text import TfidfVectorizer
