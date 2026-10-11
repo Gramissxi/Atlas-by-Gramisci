@@ -178,7 +178,7 @@ class Handler(BaseHTTPRequestHandler):
                     if user["rol"] == "docente":
                         filas=db.execute("""SELECT e.id,e.aula_id,e.titulo,e.estado,e.creado_en,e.publicado_en,a.nombre AS aula_nombre,a.materia FROM evaluaciones e JOIN aulas a ON a.id=e.aula_id WHERE a.docente_id=? ORDER BY e.id DESC""",(user["id"],)).fetchall()
                     else:
-                        filas=db.execute("""SELECT e.id,e.aula_id,e.titulo,e.estado,e.creado_en,e.publicado_en,a.nombre AS aula_nombre,a.materia,CASE WHEN t.evaluacion_id IS NULL THEN 0 ELSE 1 END AS entregada FROM evaluaciones e JOIN aulas a ON a.id=e.aula_id JOIN inscripciones i ON i.aula_id=a.id AND i.alumno_id=? LEFT JOIN entregas_evaluacion t ON t.evaluacion_id=e.id AND t.alumno_id=? WHERE e.estado='publicada' ORDER BY e.id DESC""",(user["id"],user["id"])).fetchall()
+                        filas=db.execute("""SELECT e.id,e.aula_id,e.titulo,e.estado,e.creado_en,e.publicado_en,a.nombre AS aula_nombre,a.materia,CASE WHEN t.evaluacion_id IS NULL THEN 0 ELSE 1 END AS entregada,c.nota,c.comentario,c.corregido_en FROM evaluaciones e JOIN aulas a ON a.id=e.aula_id JOIN inscripciones i ON i.aula_id=a.id AND i.alumno_id=? LEFT JOIN entregas_evaluacion t ON t.evaluacion_id=e.id AND t.alumno_id=? LEFT JOIN calificaciones c ON c.evaluacion_id=e.id AND c.alumno_id=? WHERE e.estado='publicada' ORDER BY e.id DESC""",(user["id"],user["id"],user["id"])).fetchall()
                 return self.responder({"evaluaciones":[dict(x) for x in filas]})
             if self.path == "/api/aulas/seguimiento":
                 if user["rol"]!="docente":raise ErrorUsuario("Solo docentes",403)
@@ -295,6 +295,36 @@ class Handler(BaseHTTPRequestHandler):
                     db.executemany("INSERT INTO fragmentos(documento_id,aula_id,pagina,texto) VALUES (?,?,?,?)",
                             ((doc_id,aula_id,p,t) for p,t in fragmentos))
                 return self.responder({"ok":True,"fragmentos":len(fragmentos)},201)
+            if ruta == "/api/aulas/evaluaciones/generar":
+                if user["rol"]!="docente":raise ErrorUsuario("Solo docentes pueden generar evaluaciones",403)
+                aula_id=int(datos.get("aula_id",0))
+                ids=datos.get("documentos_ids")
+                cantidad=datos.get("cantidad",5)
+                dificultad=datos.get("dificultad","media")
+                formato=datos.get("formato","mixto")
+                if type(cantidad) is not int or not 1<=cantidad<=10:
+                    raise ErrorUsuario("Seleccioná entre 1 y 10 preguntas por generación")
+                if dificultad not in ("basica","media","avanzada") or formato not in ("mixto","multiple","desarrollo"):
+                    raise ErrorUsuario("Configuración de evaluación inválida")
+                if not isinstance(ids,list) or not ids or len(ids)>100 or any(type(i) is not int or i<=0 for i in ids):
+                    raise ErrorUsuario("Seleccioná documentos válidos")
+                ids=list(dict.fromkeys(ids))
+                with conexion() as db:
+                    permiso_aula(db,user,aula_id,docente=True)
+                    existentes={x[0] for x in db.execute("SELECT id FROM documentos WHERE aula_id=?",(aula_id,))}
+                    if not set(ids).issubset(existentes):raise ErrorUsuario("Documento fuera de la clase",403)
+                    from services.recuperacion_aulas import recuperar
+                    fuentes=recuperar(db,aula_id,"conceptos definiciones ejercicios ejemplos teoria informacion contenidos",limite=10,documentos_ids=ids)
+                    if not fuentes:
+                        fuentes=[dict(x) for x in db.execute(
+                            "SELECT d.id AS documento_id,d.nombre,f.pagina,f.texto FROM fragmentos f JOIN documentos d ON d.id=CAST(f.documento_id AS INTEGER) WHERE f.aula_id=? AND d.id IN ("+
+                            ",".join("?" for _ in ids)+") AND length(f.texto)>100 ORDER BY f.pagina LIMIT 10",
+                            (aula_id,*ids))]
+                if not fuentes:raise ErrorUsuario("Los PDF elegidos no contienen texto suficiente")
+                from services.generador_evaluaciones_aulas import generar_preguntas
+                try:preguntas=generar_preguntas(fuentes,cantidad,dificultad,formato)
+                except ValueError as exc:raise ErrorUsuario(str(exc),503)
+                return self.responder({"preguntas":preguntas,"fuentes":[{"documento_id":f["documento_id"],"nombre":f["nombre"],"pagina":f["pagina"]} for f in fuentes]})
             if ruta == "/api/aulas/evaluaciones/crear":
                 if user["rol"]!="docente":raise ErrorUsuario("Solo docentes pueden crear evaluaciones",403)
                 aula_id=int(datos.get("aula_id",0))
