@@ -36,7 +36,7 @@ def recuperar(db, aula_id, pregunta, limite=5, documentos_ids=None):
 
     # Búsqueda de respaldo acotada únicamente a la clase autorizada.
     # No se limita a los primeros 20.000 bloques del repositorio.
-    filas = db.execute("""SELECT f.rowid, d.nombre, f.pagina, f.texto
+    filas = db.execute("""SELECT f.rowid, d.id AS documento_id, d.nombre, f.pagina, f.texto
         FROM fragmentos f JOIN documentos d ON d.id=CAST(f.documento_id AS INTEGER)
         WHERE f.aula_id=? {filtro}""".replace("{filtro}", filtro), tuple(parametros)).fetchall()
     puntuados = []
