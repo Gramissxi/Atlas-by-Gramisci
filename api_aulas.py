@@ -359,7 +359,16 @@ class Handler(BaseHTTPRequestHandler):
                     if not e:raise ErrorUsuario("Evaluación inexistente",404)
                     permiso_aula(db,user,e["aula_id"])
                     if user["rol"]=="alumno" and e["estado"]!="publicada":raise ErrorUsuario("No publicada",403)
-                    return self.responder({"evaluacion":{"id":e["id"],"titulo":e["titulo"],"preguntas":json.loads(e["preguntas"]),"estado":e["estado"]}})
+                    resultado={"id":e["id"],"titulo":e["titulo"],"preguntas":json.loads(e["preguntas"]),"estado":e["estado"]}
+                    if user["rol"]=="alumno":
+                        entrega=db.execute("SELECT respuestas,entregado_en FROM entregas_evaluacion WHERE evaluacion_id=? AND alumno_id=?",(evaluacion_id,user["id"])).fetchone()
+                        resultado["entregada"]=bool(entrega)
+                        if entrega:
+                            resultado["respuestas"]=json.loads(entrega["respuestas"])
+                            resultado["entregado_en"]=entrega["entregado_en"]
+                            calificacion=db.execute("SELECT nota,comentario,corregido_en FROM calificaciones WHERE evaluacion_id=? AND alumno_id=?",(evaluacion_id,user["id"])).fetchone()
+                            resultado["calificacion"]=dict(calificacion) if calificacion else None
+                    return self.responder({"evaluacion":resultado})
             if ruta == "/api/aulas/evaluaciones/corregir":
                 if user["rol"]!="docente":raise ErrorUsuario("Solo docentes",403)
                 evaluacion_id=int(datos.get("evaluacion_id",0))
