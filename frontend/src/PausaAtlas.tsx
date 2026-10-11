@@ -170,14 +170,14 @@ function Lienzo(){
   </div>;
 }
 
-export default function PausaAtlas({etapa,grado="",materia=""}:{etapa:Etapa;grado?:string;materia?:string}){
+export default function PausaAtlas({etapa,grado=""}:{etapa:Etapa;grado?:string}){
   const [juego,setJuego]=useState<"preguntas"|"memoria"|"dibujo">("preguntas");
   const grupo=nivelDe(etapa,grado);
   const banco=contenidos[grupo];
   return <section className="atlas-desafios-nuevos">
-    <p className="atlas-juego-subtitulo">{materia?materia+" · ":""}{etapa==="primaria"?"Primaria":"Secundaria"}{grado?" · "+grado:""}</p>
+    <p className="atlas-juego-subtitulo">{etapa==="primaria"?"Primaria":"Secundaria"}{grado?" · "+grado:""}</p>
     <h2>Elegí un desafío</h2>
-    <p>Estos juegos traen contenidos generales orientativos según el año. Se ejecutan en tu navegador, sin Ollama ni Internet durante la partida. Todavía no se generan a partir de los PDF.</p>
+    <p>Un espacio para divertirte con preguntas de Matemática, Lengua, Ciencias Naturales, Historia y otros temas. Las actividades se adaptan al nivel educativo, sin depender de las materias ni de los PDF.</p>
     <div className="atlas-juegos-menu">
       <button className={juego==="preguntas"?"seleccionado":""} onClick={()=>setJuego("preguntas")}><Brain size={19}/> Preguntados</button>
       <button className={juego==="memoria"?"seleccionado":""} onClick={()=>setJuego("memoria")}><Puzzle size={19}/> Memoria</button>
