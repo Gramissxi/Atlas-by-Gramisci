@@ -67,15 +67,27 @@ def generar_equilibrado(db, aula_id, ids, cantidad, dificultad, formato):
             for pos, pregunta in zip(indices, generadas):
                 # Evitar que preguntas generadas en lotes distintos se repitan.
                 intentos = 0
-                while clave_pregunta(pregunta) in vistas and intentos < 2:
+                while clave_pregunta(pregunta) in vistas and intentos < 3:
+                    intentos += 1
+                    # Cambiar el contexto: mandar las mismas primeras páginas
+                    # suele producir la misma pregunta, aunque la prohibamos.
+                    nuevos = [dict(f) for f in db.execute(
+                        """SELECT d.id AS documento_id,d.nombre,f.pagina,f.texto
+                           FROM fragmentos f JOIN documentos d ON d.id=CAST(f.documento_id AS INTEGER)
+                           WHERE d.id=? AND f.aula_id=? AND length(trim(f.texto))>=80
+                           ORDER BY f.pagina, f.rowid LIMIT 7 OFFSET ?""",
+                        (doc_id,aula_id,intentos*7)
+                    )]
+                    contexto = nuevos or fragmentos
                     alternativas = generar_preguntas(
-                        fragmentos, 1, dificultad, tipo,
+                        contexto, 1, dificultad, tipo,
                         excluir=[p for p in resultado if p]
                     )
                     pregunta = alternativas[0]
-                    intentos += 1
+                    print("Atlas: reintento %s de pregunta duplicada, PDF %s, contexto alternativo %s" %
+                          (intentos, doc_id, bool(nuevos)), flush=True)
                 if clave_pregunta(pregunta) in vistas:
-                    raise ValueError("Ollama repitió una pregunta pese a reintentos. Probá seleccionar otros materiales o intentá nuevamente.")
+                    raise ValueError("Ollama no consiguió proponer otra pregunta distinta del mismo PDF. Probá generar menos preguntas o seleccioná más materiales.")
                 vistas.add(clave_pregunta(pregunta))
                 resultado[pos] = pregunta
     if any(not isinstance(p, str) or not p.strip() for p in resultado):
