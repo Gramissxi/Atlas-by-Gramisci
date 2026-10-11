@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { Brain, Paintbrush, Puzzle, RotateCcw } from "lucide-react";
 
 type Etapa = "primaria" | "secundaria";
@@ -93,17 +93,17 @@ function Lienzo(){
   const pintando=useRef(false);
   const [color,setColor]=useState("#176b5b");
   const [grosor,setGrosor]=useState(5);
-  function ubicacion(e:React.PointerEvent<HTMLCanvasElement>){
+  function ubicacion(e:PointerEvent<HTMLCanvasElement>){
     const c=canvas.current!;
     const rect=c.getBoundingClientRect();
     return {x:(e.clientX-rect.left)*c.width/rect.width,y:(e.clientY-rect.top)*c.height/rect.height};
   }
-  function comenzar(e:React.PointerEvent<HTMLCanvasElement>){
+  function comenzar(e:PointerEvent<HTMLCanvasElement>){
     const c=canvas.current!,ctx=c.getContext("2d");if(!ctx)return;
     e.currentTarget.setPointerCapture(e.pointerId);pintando.current=true;
     const p=ubicacion(e);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+0.1,p.y);ctx.strokeStyle=color;ctx.lineWidth=grosor;ctx.lineCap="round";ctx.lineJoin="round";ctx.stroke();
   }
-  function mover(e:React.PointerEvent<HTMLCanvasElement>){if(!pintando.current)return;const ctx=canvas.current?.getContext("2d");if(!ctx)return;const p=ubicacion(e);ctx.lineTo(p.x,p.y);ctx.stroke();}
+  function mover(e:PointerEvent<HTMLCanvasElement>){if(!pintando.current)return;const ctx=canvas.current?.getContext("2d");if(!ctx)return;const p=ubicacion(e);ctx.lineTo(p.x,p.y);ctx.stroke();}
   function limpiar(){const c=canvas.current;if(c)c.getContext("2d")?.clearRect(0,0,c.width,c.height);}
   function guardar(){const c=canvas.current;if(!c)return;const exportado=document.createElement("canvas");exportado.width=c.width;exportado.height=c.height;const ctx=exportado.getContext("2d");if(!ctx)return;ctx.fillStyle="#ffffff";ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(c,0,0);const a=document.createElement("a");a.download="mi-dibujo-atlas.png";a.href=exportado.toDataURL("image/png");a.click();}
   return <div className="atlas-juego-cuerpo"><p className="atlas-juego-subtitulo">Mi rincón de dibujo · libre y sin conexión</p><p>Podés dibujar con mouse, dedo o lápiz táctil. El dibujo queda en esta pantalla hasta que lo guardes o cierres.</p><div className="atlas-pintura-herramientas"><label>Color <input aria-label="Color del lápiz" type="color" value={color} onChange={e=>setColor(e.target.value)}/></label><label>Trazo <input aria-label="Grosor del trazo" type="range" min="2" max="22" value={grosor} onChange={e=>setGrosor(Number(e.target.value))}/></label><button className="atlas-enlace" onClick={limpiar}>Borrar dibujo</button><button className="atlas-boton" onClick={guardar}>Guardar PNG</button></div><canvas ref={canvas} width={760} height={410} className="atlas-lienzo" aria-label="Lienzo para dibujar" onPointerDown={comenzar} onPointerMove={mover} onPointerUp={()=>pintando.current=false} onPointerCancel={()=>pintando.current=false}/></div>;
