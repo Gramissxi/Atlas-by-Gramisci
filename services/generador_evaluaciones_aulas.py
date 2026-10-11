@@ -92,28 +92,34 @@ def _generar_lote(fragmentos, cantidad, dificultad, formato, modelo=None, exclui
     try:
         resultado=json.loads(contenido)
         items=resultado.get("preguntas") if isinstance(resultado,dict) else resultado
-        if not isinstance(items,list) or len(items)!=cantidad:
-            raise ValueError("Cantidad inesperada: se solicitaron %s preguntas, recibidas %s" % (cantidad, len(items) if isinstance(items,list) else "formato no listado"))
+        if not isinstance(items,list) or not items:
+            raise ValueError("La IA no devolvió una lista de preguntas")
+        # Ollama pequeño puede devolver 5 aunque se solicite 1: validar y aprovechar
+        # solamente las necesarias, sin cambiar el tipo ni inventar alternativas.
         preguntas=[]
         for indice,item in enumerate(items):
             if not isinstance(item,dict):
-                raise ValueError("La IA devolvió una pregunta con formato inválido")
+                continue
             enunciado=item.get("enunciado","")
             if not isinstance(enunciado,str) or not 8<=len(enunciado.strip())<=500:
-                raise ValueError("La IA devolvió un enunciado inválido")
-            tipo_esperado=("multiple" if indice%2==0 else "desarrollo") if es_mixto else ("multiple" if es_multiple else "desarrollo")
-            if es_mixto and item.get("tipo")!=tipo_esperado:
-                raise ValueError("La IA no respetó el orden del formato mixto")
+                continue
+            tipo_esperado="multiple" if es_multiple else "desarrollo"
             if tipo_esperado=="multiple":
                 opciones=item.get("opciones")
                 if (not isinstance(opciones,list) or len(opciones)!=4
                     or any(not isinstance(x,str) or not x.strip() or len(x)>230 for x in opciones)):
-                    raise ValueError("La IA no generó cuatro alternativas por pregunta")
-                pregunta=enunciado.strip()+"\n"+"\n".join(
+                    continue
+                pregunta=enunciado.strip()+"\\n"+"\\n".join(
                     f"{letra}) {opcion.strip()}" for letra,opcion in zip("ABCD",opciones))
             else:
                 pregunta=enunciado.strip()
-            preguntas.append(pregunta)
+            # Evitar devolver varias copias del mismo enunciado en una sola tanda.
+            if pregunta not in preguntas:
+                preguntas.append(pregunta)
+            if len(preguntas)==cantidad:
+                break
+        if len(preguntas)!=cantidad:
+            raise ValueError("Se solicitaron %s preguntas; Ollama devolvió %s válidas de %s" % (cantidad,len(preguntas),len(items)))
     except (ValueError, TypeError, KeyError) as exc:
         print("Atlas: validación de preguntas falló: %s" % exc,flush=True)
         raise ValueError("Ollama no respetó el formato de preguntas (%s)." % exc) from exc
