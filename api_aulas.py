@@ -465,13 +465,12 @@ class Handler(BaseHTTPRequestHandler):
                     permiso_aula(db,user,aula_id)
                     disponibles={x[0] for x in db.execute("SELECT id FROM documentos WHERE aula_id=?",(aula_id,))}
                     if not set(ids).issubset(disponibles):raise ErrorUsuario("Documento fuera de tu clase",403)
-                    from services.recuperacion_aulas import recuperar
-                    fuentes=recuperar(db,aula_id,"conceptos definiciones ejemplos ejercicios teoría contenidos",limite=10,documentos_ids=ids)
-                if not fuentes:raise ErrorUsuario("No se encontraron fragmentos para generar preguntas")
-                from services.generador_evaluaciones_aulas import generar_preguntas
-                try:preguntas=generar_preguntas(fuentes,cantidad,dificultad,formato)
-                except ValueError as exc:raise ErrorUsuario(str(exc),503)
-                return self.responder({"preguntas":preguntas})
+                    from services.generacion_equilibrada_aulas import generar_equilibrado
+                    try:
+                        preguntas, fuentes = generar_equilibrado(db,aula_id,ids,cantidad,dificultad,formato)
+                    except ValueError as exc:
+                        raise ErrorUsuario(str(exc),503) from exc
+                return self.responder({"preguntas":preguntas,"fuentes":fuentes})
             if ruta == "/api/aulas/evaluaciones/generar":
                 if user["rol"]!="docente":raise ErrorUsuario("Solo docentes pueden generar evaluaciones",403)
                 aula_id=int(datos.get("aula_id",0))
@@ -490,18 +489,12 @@ class Handler(BaseHTTPRequestHandler):
                     permiso_aula(db,user,aula_id,docente=True)
                     existentes={x[0] for x in db.execute("SELECT id FROM documentos WHERE aula_id=?",(aula_id,))}
                     if not set(ids).issubset(existentes):raise ErrorUsuario("Documento fuera de la clase",403)
-                    from services.recuperacion_aulas import recuperar
-                    fuentes=recuperar(db,aula_id,"conceptos definiciones ejercicios ejemplos teoria informacion contenidos",limite=10,documentos_ids=ids)
-                    if not fuentes:
-                        fuentes=[dict(x) for x in db.execute(
-                            "SELECT d.id AS documento_id,d.nombre,f.pagina,f.texto FROM fragmentos f JOIN documentos d ON d.id=CAST(f.documento_id AS INTEGER) WHERE f.aula_id=? AND d.id IN ("+
-                            ",".join("?" for _ in ids)+") AND length(f.texto)>100 ORDER BY f.pagina LIMIT 10",
-                            (aula_id,*ids))]
-                if not fuentes:raise ErrorUsuario("Los PDF elegidos no contienen texto suficiente")
-                from services.generador_evaluaciones_aulas import generar_preguntas
-                try:preguntas=generar_preguntas(fuentes,cantidad,dificultad,formato)
-                except ValueError as exc:raise ErrorUsuario(str(exc),503)
-                return self.responder({"preguntas":preguntas,"fuentes":[{"documento_id":f["documento_id"],"nombre":f["nombre"],"pagina":f["pagina"]} for f in fuentes]})
+                    from services.generacion_equilibrada_aulas import generar_equilibrado
+                    try:
+                        preguntas, fuentes = generar_equilibrado(db,aula_id,ids,cantidad,dificultad,formato)
+                    except ValueError as exc:
+                        raise ErrorUsuario(str(exc),503) from exc
+                return self.responder({"preguntas":preguntas,"fuentes":fuentes})
             if ruta == "/api/aulas/evaluaciones/crear":
                 if user["rol"]!="docente":raise ErrorUsuario("Solo docentes pueden crear evaluaciones",403)
                 aula_id=int(datos.get("aula_id",0))
