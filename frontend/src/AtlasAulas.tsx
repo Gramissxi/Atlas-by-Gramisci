@@ -20,6 +20,11 @@ export default function AtlasAulas() {
   const [clave,setClave] = useState("");
   const [claveDocente,setClaveDocente] = useState("");
   const [aulas,setAulas] = useState<Aula[]>([]);
+  const [evaluaciones,setEvaluaciones] = useState<{id:number;aula_id:number;titulo:string;estado:string;aula_nombre:string;materia:string;entregada?:number}[]>([]);
+  const [tituloEvaluacion,setTituloEvaluacion] = useState("");
+  const [preguntasEvaluacion,setPreguntasEvaluacion] = useState([""]);
+  const [evaluacionAbierta,setEvaluacionAbierta] = useState<{id:number;titulo:string;preguntas:string[]}|null>(null);
+  const [respuestasAlumno,setRespuestasAlumno] = useState<string[]>([]);
   const [nombreAula,setNombreAula] = useState("");
   const [materia,setMateria] = useState("");
   const [codigo,setCodigo] = useState("");
@@ -38,7 +43,7 @@ export default function AtlasAulas() {
   const [ocupado,setOcupado] = useState(false);
   const [etapa,setEtapa] = useState<"primaria"|"secundaria">("primaria");
   const [pausa,setPausa] = useState(false);
-  const [vistaAlumno,setVistaAlumno] = useState<"inicio"|"clases"|"tutor"|"practicar"|"pausa">("inicio");
+  const [vistaAlumno,setVistaAlumno] = useState<"inicio"|"clases"|"tutor"|"practicar"|"actividades"|"pausa">("inicio");
 
   async function llamar(path:string, body?:object, autenticacion=token) {
     const respuesta = await fetch(API+path,{
@@ -57,6 +62,8 @@ export default function AtlasAulas() {
   async function actualizar(t=token) {
     const datos=await llamar("/api/aulas/lista",undefined,t);
     setAulas(datos.aulas);
+    const listado=await llamar("/api/aulas/evaluaciones",undefined,t);
+    setEvaluaciones(listado.evaluaciones);
     setSeleccion(actual=>datos.aulas.some((a:Aula)=>a.id===actual)?actual:(datos.aulas[0]?.id??null));
   }
   // Se mantiene el acceso en memoria durante esta sesión del navegador.
@@ -101,7 +108,7 @@ export default function AtlasAulas() {
   }
   async function salir() {
     try{await llamar("/api/aulas/salir",{});}catch{/* Cierre local aunque el servidor ya esté desconectado */}
-    setUsuario(null);setToken("");setAulas([]);setResultados([]);setRespuestaTutor("");setSeleccion(null);setDocumentosElegidos([]);
+    setUsuario(null);setToken("");setAulas([]);setResultados([]);setRespuestaTutor("");setSeleccion(null);setDocumentosElegidos([]);setEvaluaciones([]);setEvaluacionAbierta(null);
   }
 
   const aula=aulas.find(a=>a.id===seleccion);
@@ -130,6 +137,20 @@ export default function AtlasAulas() {
     </section>
   </main></div>;
 
+  async function crearBorrador() {
+    if(!aula)throw new Error("Seleccioná una clase");
+    const ids=documentosElegidos.length?documentosElegidos:aula.documentos.map(d=>d.id);
+    const preguntas=preguntasEvaluacion.map(p=>p.trim()).filter(Boolean);
+    if(!preguntas.length)throw new Error("Agregá una pregunta");
+    await llamar("/api/aulas/evaluaciones/crear",{aula_id:aula.id,titulo:tituloEvaluacion,documentos_ids:ids,preguntas});
+  }
+  async function abrirEvaluacion(id:number) {
+    setOcupado(true);setEstado("");
+    try {const datos=await llamar("/api/aulas/evaluaciones/ver",{evaluacion_id:id});setEvaluacionAbierta(datos.evaluacion);setRespuestasAlumno(datos.evaluacion.preguntas.map(()=>''));setVistaAlumno("actividades");}
+    catch(e){setEstado(e instanceof Error?e.message:"No se pudo abrir la actividad")}
+    finally{setOcupado(false)}
+  }
+  const pendientes=evaluaciones.filter(e=>!e.entregada);
   const vista = usuario.rol==="docente"?vistaDocente:vistaAlumno;
   const navegar=(v:string)=>{setMenuAbierto(false); if(usuario.rol==="docente")setVistaDocente(v as typeof vistaDocente);else setVistaAlumno(v as typeof vistaAlumno);setEstado("");};
   const seleccionarAula=(id:number)=>{setSeleccion(id);setDocumentosElegidos([]);setResultados([]);setRespuestaTutor("");};
@@ -149,7 +170,7 @@ export default function AtlasAulas() {
   const tarjeta=(titulo:string,descripcion:string,icono:ReactNode,v:string,tono:string)=> <button className={"atlas-v2-action "+tono} onClick={()=>navegar(v)}>{icono}<strong>{titulo}</strong><span>{descripcion}</span><ArrowRight size={17}/></button>;
   const secciones=usuario.rol==="docente"?[
     ["inicio","Inicio",<LayoutDashboard size={19}/>],["clases","Mis clases",<Users size={19}/>],["biblioteca","Biblioteca",<FolderOpen size={19}/>],["evaluaciones","Evaluaciones",<ClipboardList size={19}/>],["seguimiento","Seguimiento",<CheckCircle2 size={19}/>]
-  ]:[["inicio","Inicio",<LayoutDashboard size={19}/>],["clases","Mis materias",<BookOpen size={19}/>],["tutor","Tutor Atlas",<Sparkles size={19}/>],["practicar","Practicar",<ClipboardList size={19}/>],["pausa","Pausa y desafíos",<PlayCircle size={19}/>]];
+  ]:[["inicio","Inicio",<LayoutDashboard size={19}/>],["clases","Mis materias",<BookOpen size={19}/>],["tutor","Tutor Atlas",<Sparkles size={19}/>],["practicar","Practicar",<ClipboardList size={19}/>],["actividades","Mis actividades",<CheckCircle2 size={19}/>],["pausa","Pausa y desafíos",<PlayCircle size={19}/>]];
   return <div className="atlas-v2">
     <header className="atlas-v2-mobile-header"><button aria-label="Abrir menú" onClick={()=>setMenuAbierto(true)}><Menu/></button><strong>✦ Atlas</strong><span>{usuario.nombre}</span></header>
     <aside className={"atlas-v2-sidebar "+(menuAbierto?"atlas-v2-sidebar-open":"")}>
@@ -176,6 +197,7 @@ export default function AtlasAulas() {
           {tarjeta("Practicar","Prepará tus simulacros",<ClipboardList size={27}/>,"practicar","atlas-v2-peach")}
           {tarjeta("Pausa y desafíos","Jugá y aprendé a tu ritmo",<PlayCircle size={27}/>,"pausa","atlas-v2-green")}
         </>}</div>
+        {usuario.rol==="alumno"&&<section className="atlas-v2-card atlas-v2-pendientes"><div className="atlas-v2-row-between"><h2>Actividades pendientes {pendientes.length>0?"("+pendientes.length+")":""}</h2><button className="atlas-v2-link" onClick={()=>navegar("actividades")}>Ver todas →</button></div>{pendientes.length?pendientes.slice(0,3).map(e=><button className="atlas-v2-task" key={e.id} onClick={()=>void abrirEvaluacion(e.id)}><ClipboardList size={19}/><span><strong>{e.titulo}</strong><small>{e.materia} · {e.aula_nombre}</small></span><ArrowRight size={17}/></button>):<p>No tenés evaluaciones pendientes. ¡Podés practicar por tu cuenta!</p>}</section>}
         <div className="atlas-v2-heading"><h2>{usuario.rol==="docente"?"Clases que administrás":"Mis materias"}</h2><button className="atlas-v2-link" onClick={()=>navegar("clases")}>Ver todas →</button></div>
         <div className="atlas-v2-courses">{aulas.length?aulas.map((a,i)=><button className={"atlas-v2-course "+["atlas-v2-purple","atlas-v2-blue","atlas-v2-green","atlas-v2-peach"][i%4]} key={a.id} onClick={()=>{seleccionarAula(a.id);navegar(usuario.rol==="docente"?"biblioteca":"tutor");}}><BookOpen size={25}/><strong>{a.materia}</strong><span>{a.nombre}</span><small>{a.documentos.length} documentos · Explorar →</small></button>):<div className="atlas-v2-empty">Todavía no hay clases. {usuario.rol==="docente"?"Creá una desde Mis clases.":"Pedile el código a tu docente."}</div>}</div>
       </>}
@@ -208,8 +230,14 @@ export default function AtlasAulas() {
         <div className="atlas-v2-page-title"><small>{usuario.rol==="alumno"?"APRENDÉ A TU RITMO":"ORGANIZACIÓN DOCENTE"}</small><h1><ClipboardList size={29}/>{usuario.rol==="alumno"?"Mis simulacros":"Crear evaluación"}</h1><p>{usuario.rol==="alumno"?"Elegí los documentos sobre los que querés practicar.":"Prepará una evaluación de un PDF, varios o todos; revisala antes de publicarla."}</p></div>
         {aulas.length>0&&elegirClase()}
         <div className="atlas-v2-two"><section className="atlas-v2-card"><h2>Paso 1 · Elegí los materiales</h2>{selectorDocumentos()}</section>
-        <section className="atlas-v2-card"><h2>Paso 2 · Configurá la actividad</h2><label>Cantidad de preguntas<select defaultValue="10"><option value="5">5 preguntas</option><option value="10">10 preguntas</option><option value="15">15 preguntas</option><option value="20">20 preguntas</option></select></label><label>Dificultad<select defaultValue="media"><option value="basica">Básica</option><option value="media">Intermedia</option><option value="avanzada">Avanzada</option></select></label><label>Formato<select defaultValue="mixto"><option value="mixto">Mixto</option><option value="multiple">Opción múltiple</option><option value="desarrollo">Desarrollo</option></select></label><div className="atlas-v2-info"><Clock3 size={19}/><span>{usuario.rol==="alumno"?"Los simulacros personales tendrán corrección y explicaciones.":"Los borradores requerirán revisión docente antes de publicarse."}</span></div><p className="atlas-v2-note">La generación automática de actividades todavía está en desarrollo. Estos controles son una vista de preparación.</p></section></div>
+        <section className="atlas-v2-card"><h2>Paso 2 · Configurá la actividad</h2><label>Cantidad de preguntas<select defaultValue="10"><option value="5">5 preguntas</option><option value="10">10 preguntas</option><option value="15">15 preguntas</option><option value="20">20 preguntas</option></select></label><label>Dificultad<select defaultValue="media"><option value="basica">Básica</option><option value="media">Intermedia</option><option value="avanzada">Avanzada</option></select></label><label>Formato<select defaultValue="mixto"><option value="mixto">Mixto</option><option value="multiple">Opción múltiple</option><option value="desarrollo">Desarrollo</option></select></label><div className="atlas-v2-info"><Clock3 size={19}/><span>{usuario.rol==="alumno"?"Los simulacros personales tendrán corrección y explicaciones.":"Los borradores requerirán revisión docente antes de publicarse."}</span></div>{usuario.rol==="docente"?<div className="atlas-v2-eval-editor"><h3>Paso 3 · Revisá las preguntas</h3><label>Título de la evaluación<input value={tituloEvaluacion} maxLength={120} onChange={e=>setTituloEvaluacion(e.target.value)} placeholder="Ej.: Evaluación de Teoría de la Información"/></label>{preguntasEvaluacion.map((q,i)=><label key={i}>Pregunta {i+1}<textarea rows={2} value={q} onChange={e=>setPreguntasEvaluacion(prev=>prev.map((v,j)=>j===i?e.target.value:v))} placeholder="Escribí el enunciado que verá el alumno"/></label>)}<button className="atlas-v2-link" disabled={preguntasEvaluacion.length>=30} onClick={()=>setPreguntasEvaluacion(prev=>[...prev,""])}>+ Agregar pregunta</button><button className="atlas-v2-primary" disabled={!tituloEvaluacion.trim()||!aula?.documentos.length||ocupado||!preguntasEvaluacion.some(x=>x.trim().length>=8)} onClick={()=>void ejecutar(crearBorrador,"Borrador guardado. Revisalo abajo antes de publicar.")}>Guardar borrador</button><p className="atlas-v2-note">La generación por IA todavía no está habilitada. Las preguntas se escriben y revisan manualmente.</p></div>:<p className="atlas-v2-note">Los simulacros personales generativos se incorporarán en otra etapa.</p>}</section></div>
       </>}
+      {vista==="actividades"&&usuario.rol==="alumno"&&<>
+        <div className="atlas-v2-page-title"><small>ACTIVIDADES DEL DOCENTE</small><h1>Mis actividades</h1><p>Las evaluaciones publicadas por tus docentes aparecen aquí.</p></div>
+        <section className="atlas-v2-card"><h2>Evaluaciones asignadas</h2>{evaluaciones.length?evaluaciones.map(e=><button key={e.id} className="atlas-v2-task" disabled={!!e.entregada} onClick={()=>void abrirEvaluacion(e.id)}><ClipboardList size={20}/><span><strong>{e.titulo}</strong><small>{e.materia} · {e.aula_nombre} · {e.entregada?"Entregada":"Pendiente"}</small></span>{!e.entregada&&<ArrowRight size={18}/>}</button>):<p>Todavía no hay actividades asignadas.</p>}</section>
+        {evaluacionAbierta&&<section className="atlas-v2-card atlas-v2-eval-open"><h2>{evaluacionAbierta.titulo}</h2><p>Respondé y entregá cuando termines. No hay corrección automática en esta versión.</p>{evaluacionAbierta.preguntas.map((q,i)=><label key={i}>{i+1}. {q}<textarea rows={3} value={respuestasAlumno[i]??""} onChange={e=>setRespuestasAlumno(old=>old.map((v,j)=>j===i?e.target.value:v))}/></label>)}<button className="atlas-v2-primary" disabled={ocupado} onClick={()=>void ejecutar(async()=>{await llamar("/api/aulas/evaluaciones/entregar",{evaluacion_id:evaluacionAbierta.id,respuestas:respuestasAlumno});setEvaluacionAbierta(null);},"Evaluación entregada correctamente.")}>Entregar evaluación</button></section>}
+      </>}
+      {vista==="evaluaciones"&&usuario.rol==="docente"&&<section className="atlas-v2-card atlas-v2-eval-list"><h2>Evaluaciones creadas</h2>{evaluaciones.length?evaluaciones.map(e=><div className="atlas-v2-task" key={e.id}><ClipboardList size={20}/><span><strong>{e.titulo}</strong><small>{e.materia} · {e.aula_nombre} · {e.estado==="publicada"?"Publicada":"Borrador"}</small></span>{e.estado==="borrador"&&<button className="atlas-v2-primary" disabled={ocupado} onClick={()=>void ejecutar(()=>llamar("/api/aulas/evaluaciones/publicar",{evaluacion_id:e.id}),"Evaluación publicada. Ya aparece en Mis actividades del alumnado.")}>Publicar</button>}</div>):<p>Todavía no creaste evaluaciones.</p>}</section>}
       {vista==="seguimiento"&&usuario.rol==="docente"&&<><div className="atlas-v2-page-title"><small>DOCENTES</small><h1>Seguimiento</h1><p>Acá podrás consultar resultados, detectar temas difíciles y recomendar refuerzos.</p></div><div className="atlas-v2-card atlas-v2-empty">Todavía no hay evaluaciones registradas. No mostramos métricas inventadas.</div></>}
       {vista==="pausa"&&usuario.rol==="alumno"&&<><div className="atlas-v2-page-title"><small>APRENDER JUGANDO</small><h1>Pausa y desafíos</h1><p>Un momento para practicar con juegos y actividades cortas.</p></div><div className="atlas-v2-card"><button className="atlas-v2-primary" onClick={()=>setPausa(!pausa)}>{pausa?"Cerrar actividades":"Abrir desafíos"}</button>{pausa&&<><div className="atlas-v2-options"><button onClick={()=>setEtapa("primaria")}>Primaria</button><button onClick={()=>setEtapa("secundaria")}>Secundaria</button></div><PausaAtlas etapa={etapa}/></>}</div></>}
       <footer className="atlas-v2-footer">Atlas · Prototipo local · No apto todavía para datos reales de menores · Sin sincronización offline</footer>
