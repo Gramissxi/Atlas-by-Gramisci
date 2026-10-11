@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, useEffect, type FormEvent, type ReactNode } from "react";
 import { BookOpen, GraduationCap, LogOut, Upload, Users, ClipboardList, ChevronDown, ChevronUp, LayoutDashboard, FolderOpen, Sparkles, ArrowRight, FileText, Menu, X, Clock3, CheckCircle2, PlayCircle } from "lucide-react";
 import PausaAtlas from "./PausaAtlas";
 import "./atlas-inicio.css";
@@ -27,7 +27,7 @@ export default function AtlasAulas() {
   const [comentario,setComentario] = useState("");
   const [evaluaciones,setEvaluaciones] = useState<{id:number;aula_id:number;titulo:string;estado:string;aula_nombre:string;materia:string;entregada?:number;nota?:number|null;comentario?:string|null;corregido_en?:string|null}[]>([]);
   const [tituloEvaluacion,setTituloEvaluacion] = useState("");
-  const [preguntasEvaluacion,setPreguntasEvaluacion] = useState([""]);
+  const [preguntasEvaluacion,setPreguntasEvaluacion] = useState<string[]>(Array(5).fill(""));
   const [cantidadGeneracion,setCantidadGeneracion] = useState(5);
   const [dificultadGeneracion,setDificultadGeneracion] = useState("media");
   const [formatoGeneracion,setFormatoGeneracion] = useState("mixto");
@@ -51,10 +51,17 @@ export default function AtlasAulas() {
   const [estado,setEstado] = useState("");
   const [ocupado,setOcupado] = useState(false);
   const [accionEvaluacion,setAccionEvaluacion] = useState("");
+  const [segundosEspera,setSegundosEspera] = useState(0);
   const [etapa,setEtapa] = useState<"primaria"|"secundaria">("primaria");
   const [pausa,setPausa] = useState(false);
   const [vistaAlumno,setVistaAlumno] = useState<"inicio"|"clases"|"tutor"|"practicar"|"actividades"|"pausa">("inicio");
 
+  useEffect(()=>{
+    if(!accionEvaluacion.startsWith("Atlas está generando"))return;
+    setSegundosEspera(0);
+    const reloj=window.setInterval(()=>setSegundosEspera(s=>s+1),1000);
+    return ()=>window.clearInterval(reloj);
+  },[accionEvaluacion]);
   async function llamar(path:string, body?:object, autenticacion=token) {
     const respuesta = await fetch(API+path,{
       method:body?"POST":"GET",
@@ -162,10 +169,11 @@ export default function AtlasAulas() {
   async function crearBorrador() {
     if(!aula)throw new Error("Seleccioná una clase");
     const ids=documentosElegidos.length?documentosElegidos:aula.documentos.map(d=>d.id);
+    if(preguntasEvaluacion.some(p=>!p.trim()))throw new Error("Completá todas las preguntas o eliminá las que sobren");
     const preguntas=preguntasEvaluacion.map(p=>p.trim()).filter(Boolean);
     if(!preguntas.length)throw new Error("Agregá una pregunta");
     await llamar("/api/aulas/evaluaciones/crear",{aula_id:aula.id,titulo:tituloEvaluacion,documentos_ids:ids,preguntas});
-    setTituloEvaluacion("");setPreguntasEvaluacion([""]);
+    setTituloEvaluacion("");setPreguntasEvaluacion(Array(cantidadGeneracion).fill(""));
   }
   async function abrirEvaluacion(id:number) {
     setOcupado(true);setEstado("");
@@ -261,7 +269,7 @@ export default function AtlasAulas() {
         <div className="atlas-v2-page-title"><small>{usuario.rol==="alumno"?"APRENDÉ A TU RITMO":"ORGANIZACIÓN DOCENTE"}</small><h1><ClipboardList size={29}/>{usuario.rol==="alumno"?"Mis simulacros":"Crear evaluación"}</h1><p>{usuario.rol==="alumno"?"Elegí los documentos sobre los que querés practicar.":"Prepará una evaluación de un PDF, varios o todos; revisala antes de publicarla."}</p></div>
         {aulas.length>0&&elegirClase()}
         <div className="atlas-v2-two"><section className="atlas-v2-card"><h2>Paso 1 · Elegí los materiales</h2>{selectorDocumentos()}</section>
-        <section className="atlas-v2-card"><h2>Paso 2 · Configurá la actividad</h2><label>Cantidad de preguntas<select value={cantidadGeneracion} onChange={e=>setCantidadGeneracion(Number(e.target.value))}><option value={5}>5 preguntas</option><option value={10}>10 preguntas</option></select></label><label>Dificultad<select value={dificultadGeneracion} onChange={e=>setDificultadGeneracion(e.target.value)}><option value="basica">Básica</option><option value="media">Intermedia</option><option value="avanzada">Avanzada</option></select></label><label>Formato<select value={formatoGeneracion} onChange={e=>setFormatoGeneracion(e.target.value)}><option value="mixto">Mixto</option><option value="multiple">Opción múltiple</option><option value="desarrollo">Desarrollo</option></select></label><div className="atlas-v2-info"><Clock3 size={19}/><span>{usuario.rol==="alumno"?"Los simulacros personales tendrán corrección y explicaciones.":"Los borradores requerirán revisión docente antes de publicarse."}</span></div>{usuario.rol==="docente"?<div className="atlas-v2-eval-editor"><h3>Paso 3 · Revisá las preguntas</h3><button className="atlas-v2-primary" disabled={ocupado||!aula?.documentos.length} onClick={()=>{setAccionEvaluacion("Atlas está generando preguntas con Ollama. Puede tardar unos minutos.");void ejecutar(generarConIA,"Atlas propuso preguntas. Revisalas y editalas antes de guardar.").finally(()=>setAccionEvaluacion(""));}}><Sparkles size={17}/> Generar borrador con IA</button><label>Título de la evaluación<input value={tituloEvaluacion} maxLength={120} onChange={e=>setTituloEvaluacion(e.target.value)} placeholder="Ej.: Evaluación de Teoría de la Información"/></label>{preguntasEvaluacion.map((q,i)=><label key={i}>Pregunta {i+1}<textarea rows={2} value={q} onChange={e=>setPreguntasEvaluacion(prev=>prev.map((v,j)=>j===i?e.target.value:v))} placeholder="Escribí el enunciado que verá el alumno"/></label>)}<button className="atlas-v2-link" disabled={preguntasEvaluacion.length>=30} onClick={()=>setPreguntasEvaluacion(prev=>[...prev,""])}>+ Agregar pregunta</button><button className="atlas-v2-primary" disabled={!tituloEvaluacion.trim()||!aula?.documentos.length||ocupado||!preguntasEvaluacion.some(x=>x.trim().length>=8)} onClick={()=>{setAccionEvaluacion("Guardando borrador…");void ejecutar(crearBorrador,"Borrador guardado. Revisalo abajo antes de publicar.").finally(()=>setAccionEvaluacion(""));}}>Guardar borrador</button>{accionEvaluacion&&<div className="atlas-v2-info" role="status">{accionEvaluacion}</div>}{estado&&<div className="atlas-v2-alert" role="alert">{estado}</div>}<p className="atlas-v2-note">Las preguntas propuestas por IA son borradores. Revisalas y editalas antes de guardar y publicar.</p></div>:<p className="atlas-v2-note">Los simulacros personales generativos se incorporarán en otra etapa.</p>}</section></div>
+        <section className="atlas-v2-card"><h2>Paso 2 · Configurá la actividad</h2><label>Cantidad de preguntas<select value={cantidadGeneracion} onChange={e=>{const n=Number(e.target.value);setCantidadGeneracion(n);setPreguntasEvaluacion(prev=>Array.from({length:n},(_,i)=>prev[i]??""));}}><option value={5}>5 preguntas</option><option value={10}>10 preguntas</option><option value={15}>15 preguntas</option></select></label><label>Dificultad<select value={dificultadGeneracion} onChange={e=>setDificultadGeneracion(e.target.value)}><option value="basica">Básica</option><option value="media">Intermedia</option><option value="avanzada">Avanzada</option></select></label><label>Formato<select value={formatoGeneracion} onChange={e=>setFormatoGeneracion(e.target.value)}><option value="mixto">Mixto</option><option value="multiple">Opción múltiple</option><option value="desarrollo">Desarrollo</option></select></label><div className="atlas-v2-info"><Clock3 size={19}/><span>{usuario.rol==="alumno"?"Los simulacros personales tendrán corrección y explicaciones.":"Los borradores requerirán revisión docente antes de publicarse."}</span></div>{usuario.rol==="docente"?<div className="atlas-v2-eval-editor"><h3>Paso 3 · Revisá las preguntas</h3><button className="atlas-v2-primary" disabled={ocupado||!aula?.documentos.length} onClick={()=>{setAccionEvaluacion("Atlas está generando preguntas con Ollama. Puede tardar unos minutos.");void ejecutar(generarConIA,"Atlas propuso preguntas. Revisalas y editalas antes de guardar.").finally(()=>setAccionEvaluacion(""));}}><Sparkles size={17}/> Generar borrador con IA</button><label>Título de la evaluación<input value={tituloEvaluacion} maxLength={120} onChange={e=>setTituloEvaluacion(e.target.value)} placeholder="Ej.: Evaluación de Teoría de la Información"/></label>{preguntasEvaluacion.map((q,i)=><label key={i}>Pregunta {i+1}<textarea rows={2} value={q} onChange={e=>setPreguntasEvaluacion(prev=>prev.map((v,j)=>j===i?e.target.value:v))} placeholder="Escribí el enunciado que verá el alumno"/></label>)}<button className="atlas-v2-link" disabled={preguntasEvaluacion.length>=30} onClick={()=>setPreguntasEvaluacion(prev=>[...prev,""])}>+ Agregar pregunta</button><button className="atlas-v2-primary" disabled={!tituloEvaluacion.trim()||!aula?.documentos.length||ocupado||preguntasEvaluacion.some(x=>x.trim().length<8)} onClick={()=>{setAccionEvaluacion("Guardando borrador…");void ejecutar(crearBorrador,"Borrador guardado. Revisalo abajo antes de publicar.").finally(()=>setAccionEvaluacion(""));}}>Guardar borrador</button>{accionEvaluacion&&<div className="atlas-v2-info" role="status"><Clock3 size={19}/><span>{accionEvaluacion}{accionEvaluacion.startsWith("Atlas está generando")&&<><strong> Tiempo transcurrido: {Math.floor(segundosEspera/60)}:{String(segundosEspera%60).padStart(2,"0")}</strong> · El tiempo es orientativo, no hay cuenta regresiva garantizada (límite de espera: 3 minutos).</>}</span></div>}{estado&&<div className="atlas-v2-alert" role="alert">{estado}</div>}<p className="atlas-v2-note">Las preguntas propuestas por IA son borradores. Revisalas y editalas antes de guardar y publicar.</p></div>:<p className="atlas-v2-note">Los simulacros personales generativos se incorporarán en otra etapa.</p>}</section></div>
       </>}
       {vista==="actividades"&&usuario.rol==="alumno"&&<>
         <div className="atlas-v2-page-title"><small>ACTIVIDADES DEL DOCENTE</small><h1>Mis actividades</h1><p>Las evaluaciones publicadas por tus docentes aparecen aquí.</p></div>
