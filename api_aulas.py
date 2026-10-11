@@ -386,7 +386,7 @@ class Handler(BaseHTTPRequestHandler):
                 import re
                 for i,pregunta in enumerate(json.loads(eva["preguntas"]),1):
                     # Soporta preguntas históricas con opciones seguidas o separadas por saltos.
-                    marcas=list(re.finditer(r"(?<![A-Za-zÁÉÍÓÚáéíóú])([A-D])[).:]\\s*",pregunta))
+                    marcas=list(re.finditer(r"(?<![A-Za-zÁÉÍÓÚáéíóú])([A-D])[).:]\s*",pregunta))
                     if [m.group(1) for m in marcas]==["A","B","C","D"]:
                         enunciado=pregunta[:marcas[0].start()].strip()
                         opciones=[pregunta[m.end():marcas[j+1].start() if j<3 else None].strip()
