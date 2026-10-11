@@ -47,7 +47,15 @@ def recuperar(db, aula_id, pregunta, limite=5):
             entrada = fusion.setdefault(clave,{"fila":fila,"puntaje":0,"metodos":[]})
             entrada["puntaje"] += 1/(60+posicion)
             entrada["metodos"].append(origen)
-    ranking = sorted(fusion.values(),key=lambda x:x["puntaje"],reverse=True)[:limite]
+    # Penalización suave a índices de diapositivas, que suelen listar términos
+    # sin definirlos. Heurística: requiere evaluación con PDFs reales.
+    def puntuacion_final(item):
+        texto = normalizar(item["fila"]["texto"])
+        lineas = [x.strip() for x in texto.splitlines() if x.strip()]
+        es_temario = ("indice" in texto[:100] or "temario" in texto[:100]
+                     or (len(lineas) >= 5 and sum(len(x) < 65 for x in lineas) / len(lineas) > 0.8))
+        return item["puntaje"] * (0.35 if es_temario else 1)
+    ranking = sorted(fusion.values(),key=puntuacion_final,reverse=True)[:limite]
     return [
         {"nombre":x["fila"]["nombre"],"pagina":x["fila"]["pagina"],"texto":x["fila"]["texto"]}
         for x in ranking
