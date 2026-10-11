@@ -93,7 +93,7 @@ class TestGeneracionEquilibrada(unittest.TestCase):
             preguntas=_generar_lote(fuentes,1,"media","multiple")
         self.assertEqual(len(preguntas),1)
         self.assertIn("A) Uno",preguntas[0])
-        self.assertIn("\\nB) Dos",preguntas[0])
+        self.assertIn("\nB) Dos",preguntas[0])
 
     def test_mas_documentos_que_preguntas(self):
         with self.assertRaises(ValueError):
