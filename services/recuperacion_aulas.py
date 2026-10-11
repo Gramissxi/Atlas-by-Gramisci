@@ -15,21 +15,30 @@ def palabras(pregunta):
     texto = normalizar(pregunta)
     return list(dict.fromkeys(p for p in re.findall(r"[^\W_]+",texto) if len(p)>2 and p not in STOP))[:14]
 
-def recuperar(db, aula_id, pregunta, limite=5):
+def recuperar(db, aula_id, pregunta, limite=5, documentos_ids=None):
+    """Filtra por aula y, opcionalmente, por documentos autorizados."""
     tokens = palabras(pregunta)
     if not tokens:
         return []
+    filtro = ""
+    parametros = [aula_id]
+    if documentos_ids is not None:
+        if not documentos_ids:
+            return []
+        marcadores = ",".join("?" for _ in documentos_ids)
+        filtro = f" AND d.id IN ({marcadores})"
+        parametros.extend(documentos_ids)
     consulta = " OR ".join('"' + t + '"' for t in tokens)
-    filas_fts = db.execute("""SELECT f.rowid, d.nombre, f.pagina, f.texto
+    filas_fts = db.execute("""SELECT f.rowid, d.id AS documento_id, d.nombre, f.pagina, f.texto
         FROM fragmentos f JOIN documentos d ON d.id=CAST(f.documento_id AS INTEGER)
-        WHERE f.aula_id=? AND fragmentos MATCH ?
-        ORDER BY bm25(fragmentos) LIMIT 40""", (aula_id,consulta)).fetchall()
+        WHERE f.aula_id=? AND fragmentos MATCH ? {filtro}
+        ORDER BY bm25(fragmentos) LIMIT 40""".replace("{filtro}", filtro), (aula_id,consulta,*parametros[1:])).fetchall()
 
     # Búsqueda de respaldo acotada únicamente a la clase autorizada.
     # No se limita a los primeros 20.000 bloques del repositorio.
     filas = db.execute("""SELECT f.rowid, d.nombre, f.pagina, f.texto
         FROM fragmentos f JOIN documentos d ON d.id=CAST(f.documento_id AS INTEGER)
-        WHERE f.aula_id=?""",(aula_id,)).fetchall()
+        WHERE f.aula_id=? {filtro}""".replace("{filtro}", filtro), tuple(parametros)).fetchall()
     puntuados = []
     for fila in filas:
         texto = normalizar(fila["texto"])
@@ -57,6 +66,6 @@ def recuperar(db, aula_id, pregunta, limite=5):
         return item["puntaje"] * (0.35 if es_temario else 1)
     ranking = sorted(fusion.values(),key=puntuacion_final,reverse=True)[:limite]
     return [
-        {"nombre":x["fila"]["nombre"],"pagina":x["fila"]["pagina"],"texto":x["fila"]["texto"]}
+        {"documento_id":x["fila"]["documento_id"],"nombre":x["fila"]["nombre"],"pagina":x["fila"]["pagina"],"texto":x["fila"]["texto"]}
         for x in ranking
     ]
