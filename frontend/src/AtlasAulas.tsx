@@ -8,7 +8,7 @@ type Usuario = { id: number; nombre: string; rol: Rol };
 type Documento = { id: number; nombre: string; paginas: number };
 type Aula = { id: number; nombre: string; materia: string; codigo?: string; documentos: Documento[] };
 type Resultado = { nombre: string; pagina: number; texto: string };
-const API = `http://${window.location.hostname}:8770`;
+const API = "/atlas-api";
 
 export default function AtlasAulas() {
   const [modo,setModo] = useState<"ingresar"|"crear">("ingresar");
