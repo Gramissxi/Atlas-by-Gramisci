@@ -6,10 +6,13 @@ from services.recuperacion_aulas import recuperar
 
 
 def clave_pregunta(pregunta):
-    enunciado = re.split(r"(?<!\\w)A[).:]\\s*", pregunta, maxsplit=1)[0]
-    limpio = "".join(c for c in unicodedata.normalize("NFKD", enunciado.lower()) if not unicodedata.combining(c))
-    return " ".join(re.findall(r"\\w+", limpio))
-
+    # Compara solo el enunciado, sin alternativas ni acentos.
+    enunciado = re.split(r"\s+A[).:]\s*", pregunta, maxsplit=1)[0]
+    limpio = "".join(
+        c for c in unicodedata.normalize("NFKD", enunciado.casefold())
+        if not unicodedata.combining(c)
+    )
+    return " ".join(re.findall(r"[a-z0-9]+", limpio))
 
 def generar_equilibrado(db, aula_id, ids, cantidad, dificultad, formato):
     """Devuelve preguntas en orden y sus fuentes, sin mezclar PDFs en un prompt.
