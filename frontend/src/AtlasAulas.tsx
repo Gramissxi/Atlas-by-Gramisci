@@ -93,7 +93,7 @@ export default function AtlasAulas() {
   }
 
   const aula=aulas.find(a=>a.id===seleccion);
-  if(!usuario) return <div className="atlas-nuevo atlas-primaria"><main className="atlas-contenido" style={{maxWidth:660,margin:"auto"}}>
+  if(!usuario) return <div className="atlas-nuevo atlas-primaria"><main className="atlas-contenido atlas-acceso">
     <section className="atlas-pagina">
       <span className="atlas-sobrelinea"><GraduationCap size={19}/> Atlas · Plataforma educativa</span>
       <h1>{modo==="ingresar"?"Bienvenido a Atlas":"Crear una cuenta"}</h1>
@@ -102,7 +102,7 @@ export default function AtlasAulas() {
         <button className={rol==="alumno"?"elegida":""} onClick={()=>setRol("alumno")}>Soy alumno/a</button>
         <button className={rol==="docente"?"elegida":""} onClick={()=>setRol("docente")}>Soy docente</button>
       </div>
-      <form className="atlas-caja" onSubmit={autenticar}>
+      <form className="atlas-caja atlas-formulario" onSubmit={autenticar}>
         {modo==="crear"&&<><label htmlFor="nombre">Nombre</label><input id="nombre" required maxLength={80} value={nombre} onChange={e=>setNombre(e.target.value)}/></>}
         <label htmlFor="usuario">Usuario</label>
         <input id="usuario" required value={login} onChange={e=>setLogin(e.target.value)} autoComplete="username"/>
