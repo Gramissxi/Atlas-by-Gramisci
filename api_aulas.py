@@ -302,7 +302,7 @@ class Handler(BaseHTTPRequestHandler):
                 cantidad=datos.get("cantidad",5)
                 dificultad=datos.get("dificultad","media")
                 formato=datos.get("formato","mixto")
-                if type(cantidad) is not int or not 1<=cantidad<=10:
+                if type(cantidad) is not int or not 1<=cantidad<=15:
                     raise ErrorUsuario("Seleccioná entre 1 y 10 preguntas por generación")
                 if dificultad not in ("basica","media","avanzada") or formato not in ("mixto","multiple","desarrollo"):
                     raise ErrorUsuario("Configuración de evaluación inválida")
