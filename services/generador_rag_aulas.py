@@ -25,13 +25,16 @@ def responder_con_documentos(pregunta, fragmentos, materia="", modelo=None, time
         "Si no hay información suficiente para responder la pregunta, decí: "
         "'No encuentro esa respuesta en el material de esta clase'. "
         "No inventes hechos, páginas, bibliografía ni citas. "
-        "Explicá paso a paso si corresponde. Citá fuente y página que efectivamente uses. "
+        "Para preguntas conceptuales, respondé en 2 a 4 oraciones, sin repetir ideas ni saludos. "
+        "Para ejercicios, explicá los pasos necesarios. No agregues apartados no solicitados. "
+        "Citá documento y página que efectivamente uses. "
         "No presentes como comprobado lo que solo se puede deducir."
     )
     carga = json.dumps({
         "model": modelo,
         "stream": False,
-        "options": {"temperature": 0.2, "num_predict": 700},
+        "options": {"temperature": 0.15, "num_predict": 320},
+        "keep_alive": "10m",
         "messages": [
             {"role": "system", "content": sistema},
             {"role": "user", "content": f"Pregunta: {pregunta}\n\nFUENTES AUTORIZADAS:\n{contexto}"},
@@ -47,6 +50,7 @@ def responder_con_documentos(pregunta, fragmentos, materia="", modelo=None, time
         if not texto:
             raise ValueError("Ollama devolvió una respuesta vacía")
         duracion = round(time.perf_counter() - inicio, 2)
+        a_segundos = lambda ns: round(ns / 1_000_000_000, 3) if isinstance(ns, (int, float)) else None
         motivo = datos.get("done_reason", "")
         truncada = motivo == "length"
         return {
@@ -56,6 +60,9 @@ def responder_con_documentos(pregunta, fragmentos, materia="", modelo=None, time
             "segundos_generacion": duracion,
             "tokens_generados": datos.get("eval_count"),
             "tokens_contexto": datos.get("prompt_eval_count"),
+            "segundos_carga_modelo": a_segundos(datos.get("load_duration")),
+            "segundos_procesamiento_contexto": a_segundos(datos.get("prompt_eval_duration")),
+            "segundos_evaluacion_tokens": a_segundos(datos.get("eval_duration")),
             "truncada": truncada,
             "motivo_finalizacion": motivo,
         }
