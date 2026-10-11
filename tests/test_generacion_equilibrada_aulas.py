@@ -7,7 +7,8 @@ from services.generador_evaluaciones_aulas import generar_preguntas, _generar_lo
 
 
 class FakeDB:
-    pass
+    def execute(self, *args):
+        return []
 
 
 class TestGeneracionEquilibrada(unittest.TestCase):
