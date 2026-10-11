@@ -88,7 +88,7 @@ export default function AtlasAulas() {
   async function preguntar(e:FormEvent){
     e.preventDefault();
     if(seleccion===null)return;
-    setOcupado(true);setEstado("");setResultados([]);setRespuestaTutor("");setModoTutor("");setMetricasTutor(null);
+    setOcupado(true);setEstado("");setResultados([]);setFuentesAbiertas([]);setRespuestaTutor("");setModoTutor("");setMetricasTutor(null);
     try{const respuesta=await llamar("/api/aulas/consultar",{aula_id:seleccion,pregunta,documentos_ids:documentosElegidos.length?documentosElegidos:aula?.documentos.map(d=>d.id)});setResultados(respuesta.resultados);setRespuestaTutor(respuesta.respuesta || "");setModoTutor(respuesta.modo || "");setMetricasTutor({segundos_generacion:respuesta.segundos_generacion,tokens_generados:respuesta.tokens_generados,truncada:respuesta.truncada});
       if(!respuesta.resultados.length)setEstado(respuesta.detalle || "No encontré coincidencias. Probá con un término del documento.");
     }catch(e){setEstado(e instanceof Error?e.message:"Error al consultar")}
@@ -151,7 +151,8 @@ export default function AtlasAulas() {
         <div className="atlas-titulo-seccion"><h2>Mis materias</h2><span>Clases en las que estás inscripto/a</span></div>
         {aulas.length ? <div className="atlas-tarjetas">{aulas.map(a=><button className="atlas-materia atlas-azul" key={a.id} onClick={()=>{setSeleccion(a.id);setVistaAlumno("tutor");}}><BookOpen size={29}/><strong>{a.materia}</strong><small>{a.nombre}</small><span>Estudiar →</span></button>)}</div> : <div className="atlas-aviso">Todavía no te uniste a ninguna clase. Ingresá el código que te dio tu docente.</div>}
         <div className="atlas-dos-columnas"><section className="atlas-caja"><BookOpen/><h3>Mis clases</h3><p>Organizá las materias y los documentos disponibles.</p><button className="atlas-enlace" onClick={()=>setVistaAlumno("clases")}>Ver mis clases →</button></section>
-        <section className="atlas-caja"><GraduationCap/><h3>Tu tutor Atlas</h3><p>Buscá información en las guías de tus docentes.</p><button className="atlas-enlace" onClick={()=>setVistaAlumno("tutor")}>Ir al tutor →</button></section></div>
+        <section className="atlas-caja"><GraduationCap/><h3>Tu tutor Atlas</h3><p>Buscá información en las guías de tus docentes.</p><button className="atlas-enlace" onClick={()=>setVistaAlumno("tutor")}>Ir al tutor →</button></section>
+        <section className="atlas-caja"><ClipboardList/><h3>Practicar</h3><p>Elegí los PDF de una materia y prepará tus simulacros.</p><button className="atlas-enlace" onClick={()=>setVistaAlumno("practicar")}>Ir a practicar →</button></section></div>
       </section>}
       {(usuario.rol==="docente" || vistaAlumno!=="inicio") &&       <section className="atlas-pagina atlas-aulas-dashboard">
         {usuario.rol==="docente" && <div className="atlas-aulas-hero"><span className="atlas-sobrelinea">{usuario.rol==="docente"?"Tu espacio de enseñanza":"Tu espacio para aprender"}</span><h1>{usuario.rol==="docente"?"Panel docente":"Mis clases"}</h1>
@@ -182,7 +183,7 @@ export default function AtlasAulas() {
             {aula.documentos.map(d=><label className="atlas-doc-check" key={d.id}><input type="checkbox" checked={documentosElegidos.length===0 || documentosElegidos.includes(d.id)} onChange={e=>{
               const anteriores=documentosElegidos.length?aula.documentos.filter(x=>documentosElegidos.includes(x.id)).map(x=>x.id):aula.documentos.map(x=>x.id);
               const nuevos=e.target.checked?[...new Set([...anteriores,d.id])]:anteriores.filter(id=>id!==d.id);
-              setDocumentosElegidos(nuevos.length===aula.documentos.length?[]:nuevos);
+              setDocumentosElegidos(nuevos.length===0?anteriores:(nuevos.length===aula.documentos.length?[]:nuevos));
             }}/><span>{d.nombre} <small>({d.paginas} páginas)</small></span></label>)}
             <small>{documentosElegidos.length===0?"Todos los PDF seleccionados":documentosElegidos.length+" PDF seleccionados"}</small>
           </div>}
