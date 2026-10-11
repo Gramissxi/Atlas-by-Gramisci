@@ -1,7 +1,9 @@
 import unittest
+import json
+from io import BytesIO
 from unittest.mock import patch
 from services.generacion_equilibrada_aulas import generar_equilibrado, clave_pregunta
-from services.generador_evaluaciones_aulas import generar_preguntas
+from services.generador_evaluaciones_aulas import generar_preguntas, _generar_lote
 
 
 class FakeDB:
@@ -77,6 +79,21 @@ class TestGeneracionEquilibrada(unittest.TestCase):
         self.assertEqual(llamadas,[2,1,1])
         self.assertEqual(len(preguntas),2)
         self.assertNotEqual(preguntas[0],preguntas[1])
+
+    def test_modelo_devuelve_cinco_cuando_se_pide_una(self):
+        items=[{"enunciado":f"¿Qué ocurre con la señal número {i}?","opciones":["Uno","Dos","Tres","Cuatro"]} for i in range(5)]
+        contenido=json.dumps({"message":{"content":json.dumps({"preguntas":items})},"eval_count":80,"done_reason":"stop"}).encode("utf-8")
+        class Respuesta:
+            def __enter__(self):
+                return BytesIO(contenido)
+            def __exit__(self,*args):
+                return False
+        fuentes=[{"nombre":"PDF de señales","pagina":3,"texto":"Conceptos de señales y telecomunicaciones"}]
+        with patch("services.generador_evaluaciones_aulas.urlopen",return_value=Respuesta()):
+            preguntas=_generar_lote(fuentes,1,"media","multiple")
+        self.assertEqual(len(preguntas),1)
+        self.assertIn("A) Uno",preguntas[0])
+        self.assertIn("\\nB) Dos",preguntas[0])
 
     def test_mas_documentos_que_preguntas(self):
         with self.assertRaises(ValueError):
