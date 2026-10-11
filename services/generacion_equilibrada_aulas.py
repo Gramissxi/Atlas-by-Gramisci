@@ -1,6 +1,14 @@
+import re
+import unicodedata
 """Generación equilibrada por PDF: cada documento aporta preguntas y fuentes propias."""
 from services.generador_evaluaciones_aulas import generar_preguntas
 from services.recuperacion_aulas import recuperar
+
+
+def clave_pregunta(pregunta):
+    enunciado = re.split(r"(?<!\\w)A[).:]\\s*", pregunta, maxsplit=1)[0]
+    limpio = "".join(c for c in unicodedata.normalize("NFKD", enunciado.lower()) if not unicodedata.combining(c))
+    return " ".join(re.findall(r"\\w+", limpio))
 
 
 def generar_equilibrado(db, aula_id, ids, cantidad, dificultad, formato):
@@ -16,6 +24,7 @@ def generar_equilibrado(db, aula_id, ids, cantidad, dificultad, formato):
         posiciones[ids[posicion % len(ids)]].append(posicion)
     resultado = [None] * cantidad
     fuentes_usadas = []
+    vistas = set()
     for doc_id in ids:
         ubicaciones = posiciones[doc_id]
         if not ubicaciones:
@@ -53,6 +62,18 @@ def generar_equilibrado(db, aula_id, ids, cantidad, dificultad, formato):
             if len(generadas) != len(indices):
                 raise ValueError("Ollama no generó la cantidad necesaria para uno de los documentos")
             for pos, pregunta in zip(indices, generadas):
+                # Evitar que preguntas generadas en lotes distintos se repitan.
+                intentos = 0
+                while clave_pregunta(pregunta) in vistas and intentos < 2:
+                    alternativas = generar_preguntas(
+                        fragmentos, 1, dificultad, tipo,
+                        excluir=[p for p in resultado if p]
+                    )
+                    pregunta = alternativas[0]
+                    intentos += 1
+                if clave_pregunta(pregunta) in vistas:
+                    raise ValueError("Ollama repitió una pregunta pese a reintentos. Probá seleccionar otros materiales o intentá nuevamente.")
+                vistas.add(clave_pregunta(pregunta))
                 resultado[pos] = pregunta
     if any(not isinstance(p, str) or not p.strip() for p in resultado):
         raise ValueError("El simulacro quedó incompleto; intentá generar nuevamente")
