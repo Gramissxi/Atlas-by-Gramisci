@@ -182,3 +182,12 @@ button.atlas-v2-task:hover{background:#eaf7f2}
 .atlas-v2-eval-status.corregida{background:#e5f5ed;color:#186c4b}
 .atlas-v2-eval-status.sin-corregir{background:#fff1d9;color:#956222}
 @media(max-width:650px){.atlas-v2-tracking{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-v2-feedback{padding:18px}.atlas-v2-eval-open{padding-left:19px;padding-right:19px}}
+
+/* Ajustes de lectura y etiquetas discretas */
+.atlas-v2-task>.atlas-v2-eval-status{flex:0 0 auto;width:auto;min-width:94px;text-align:center;padding:7px 12px;border-radius:999px;font-size:11px}
+.atlas-v2-task>button.atlas-v2-primary{flex:0 0 auto}
+.atlas-v2-feedback{padding:22px 26px!important;overflow:hidden}
+.atlas-v2-feedback h3,.atlas-v2-feedback strong,.atlas-v2-feedback p{padding-left:0!important;margin-left:0!important}
+.atlas-v2-eval-open>label{padding-left:10px!important;padding-right:10px!important}
+.atlas-v2-eval-open textarea{display:block;width:100%;padding:16px 20px!important}
+@media(max-width:650px){.atlas-v2-feedback{padding:18px 20px!important}}
