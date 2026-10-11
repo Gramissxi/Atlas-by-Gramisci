@@ -34,6 +34,17 @@ class RecuperacionAulasTests(unittest.TestCase):
         self.assertTrue(resultado)
         self.assertEqual(resultado[0]["pagina"],31)
 
+    def test_seleccion_de_un_documento(self):
+        self.db.execute("INSERT INTO documentos VALUES (3,'Otra unidad.pdf')")
+        self.db.execute("INSERT INTO fragmentos VALUES (3,1,15,'Entropía e información de otra unidad')")
+        r = recuperar(self.db, 1, "entropia informacion", documentos_ids=[1])
+        self.assertTrue(r)
+        self.assertTrue(all(item["documento_id"] == 1 for item in r))
+        self.assertTrue(all(item["nombre"] != "Otra unidad.pdf" for item in r))
+
+    def test_sin_documentos(self):
+        self.assertEqual(recuperar(self.db, 1, "entropia", documentos_ids=[]), [])
+
     def test_consulta_sencilla(self):
         r = recuperar(self.db, 1, "informacion")
         self.assertTrue(r)
