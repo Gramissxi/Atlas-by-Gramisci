@@ -85,16 +85,32 @@ const preguntasExtra:Record<string,Reto[]>={
 };
 function JuegoPreguntas({banco,grupo}:{banco:Banco;grupo:string}){
   const preguntas=[...banco.preguntas,...(preguntasExtra[grupo]||[])];
-  const [orden,setOrden]=useState<number[]>(()=>barajar(preguntas.map((_,i)=>i)));
-
+  const [pendientes,setPendientes]=useState<number[]>(()=>barajar(preguntas.map((_,i)=>i)).slice(3));
+  const [ronda,setRonda]=useState<number[]>(()=>Array.from({length:3},(_,i)=>i));
+  const [primeraRonda,setPrimeraRonda]=useState(true);
   const [indice,setIndice]=useState(0);
   const [respuesta,setRespuesta]=useState<number|null>(null);
   const [puntos,setPuntos]=useState(0);
-  const pregunta=preguntas[orden[indice]];
-  const terminado=indice>=orden.length;
+  const [agotado,setAgotado]=useState(false);
+  const pregunta=preguntas[ronda[indice]];
+  const terminado=indice>=ronda.length;
+  // Primera ronda y cola sin repeticiones, incluso al volver a jugar.
+  useEffect(()=>{
+    if(!primeraRonda)return;
+    const orden=barajar(preguntas.map((_,i)=>i));
+    setRonda(orden.slice(0,3));
+    setPendientes(orden.slice(3));
+    setPrimeraRonda(false);
+  },[primeraRonda,grupo]);
+  function siguienteRonda(){
+    if(!pendientes.length){setAgotado(true);return;}
+    const siguientes=pendientes.slice(0,3);
+    setRonda(siguientes);setPendientes(pendientes.slice(siguientes.length));
+    setIndice(0);setRespuesta(null);setPuntos(0);
+  }
   return <div className="atlas-juego-cuerpo">
-    <p className="atlas-juego-subtitulo">Preguntados · {Math.min(indice+1,orden.length)} de {orden.length} · {puntos} puntos</p>
-    {terminado?<><h3>¡Terminaste!</h3><p>Lograste {puntos} de {orden.length} respuestas correctas.</p><button className="atlas-boton" onClick={()=>{setIndice(0);setRespuesta(null);setPuntos(0);setOrden(prev=>{const nuevo=barajar(preguntas.map((_,i)=>i));if(nuevo[0]===prev[0]&&nuevo.length>1){[nuevo[0],nuevo[1]]=[nuevo[1],nuevo[0]];}return nuevo;});}}>Volver a jugar</button></>:<>
+    <p className="atlas-juego-subtitulo">Preguntados · {Math.min(indice+1,ronda.length)} de {ronda.length} · {puntos} puntos · {pendientes.length} nuevas disponibles</p>
+    {terminado?<><h3>¡Terminaste esta ronda!</h3><p>Lograste {puntos} de {ronda.length} respuestas correctas.</p>{agotado||!pendientes.length?<p>Ya jugaste todas las preguntas disponibles de este nivel. Cuando Atlas incorpore un nuevo paquete habrá más desafíos. Podés repasar las anteriores cuando quieras.</p>:<button className="atlas-boton" onClick={siguienteRonda}>Jugar con preguntas nuevas</button>}</>:<>
       <h3>{pregunta.pregunta}</h3>
       <div className="atlas-juego-opciones">{pregunta.opciones.map((op,i)=><button key={op} disabled={respuesta!==null} className={respuesta!==null&&i===pregunta.correcta?"correcta":respuesta===i?"incorrecta":""} onClick={()=>{setRespuesta(i);if(i===pregunta.correcta)setPuntos(p=>p+1);}}>{op}</button>)}</div>
       {respuesta!==null&&<div className="atlas-juego-explicacion" role="status"><strong>{respuesta===pregunta.correcta?"¡Correcto!":"A seguir practicando."}</strong><p>{pregunta.explicacion}</p><button className="atlas-boton" onClick={()=>{setIndice(i=>i+1);setRespuesta(null);}}>Siguiente</button></div>}
