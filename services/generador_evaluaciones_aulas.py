@@ -54,12 +54,27 @@ def generar_preguntas(fragmentos, cantidad, dificultad, formato, modelo=None):
         preguntas=[p.strip() for p in preguntas if isinstance(p,str) and 8<=len(p.strip())<=500]
     except (ValueError,TypeError,KeyError):
         raise ValueError("Ollama no devolvió preguntas válidas. Intentá nuevamente.")
+    # Aceptar alternativas en líneas separadas o inline, y normalizarlas.
+    # El patrón anterior buscaba el texto literal "\\n" en vez de un salto real.
     if formato in ("multiple","mixto"):
         indices=range(len(preguntas)) if formato=="multiple" else range(0,len(preguntas),2)
-        patron=re.compile(r"(?im)(?:^|\\n)\\s*[A-D][).:]\\s*\\S+")
-        invalidas=[i+1 for i in indices if len(patron.findall(preguntas[i]))<4]
+        patron=re.compile(r"(?<![A-Za-zÁÉÍÓÚáéíóú])([A-D])[).:]\\s*")
+        invalidas=[]
+        for i in indices:
+            marcas=list(patron.finditer(preguntas[i]))
+            letras=[m.group(1) for m in marcas]
+            if letras!=["A","B","C","D"]:
+                invalidas.append(i+1)
+                continue
+            enunciado=preguntas[i][:marcas[0].start()].strip()
+            opciones=[preguntas[i][m.end():marcas[j+1].start() if j+1<len(marcas) else None].strip()
+                      for j,m in enumerate(marcas)]
+            if not enunciado or any(not opcion for opcion in opciones):
+                invalidas.append(i+1)
+                continue
+            preguntas[i]=enunciado+"\\n"+"\\n".join(f"{letra}) {opcion}" for letra,opcion in zip("ABCD",opciones))
         if invalidas:
-            raise ValueError("Ollama no respetó el formato de opción múltiple en las preguntas "+", ".join(map(str,invalidas))+". Volvé a generar.")
+            raise ValueError("Ollama no incluyó cuatro alternativas válidas en las preguntas "+", ".join(map(str,invalidas))+". Intentá nuevamente.")
     if len(preguntas)!=cantidad:
         raise ValueError(f"Ollama generó {len(preguntas)} preguntas válidas de {cantidad}. Intentá nuevamente o elegí menos.")
     return preguntas
