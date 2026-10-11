@@ -71,6 +71,9 @@ def conexion():
         tokenize='unicode61 remove_diacritics 2'
     );
     """)
+    columnas={c["name"] for c in db.execute("PRAGMA table_info(aulas)")}
+    if "nivel" not in columnas:db.execute("ALTER TABLE aulas ADD COLUMN nivel TEXT NOT NULL DEFAULT 'sin_definir'")
+    if "grado" not in columnas:db.execute("ALTER TABLE aulas ADD COLUMN grado TEXT NOT NULL DEFAULT ''")
     return db
 
 
@@ -165,9 +168,9 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/aulas/lista":
                 with conexion() as db:
                     if user["rol"] == "docente":
-                        filas = db.execute("SELECT id,nombre,materia,codigo FROM aulas WHERE docente_id=? ORDER BY id DESC",(user["id"],)).fetchall()
+                        filas = db.execute("SELECT id,nombre,materia,codigo,nivel,grado FROM aulas WHERE docente_id=? ORDER BY id DESC",(user["id"],)).fetchall()
                     else:
-                        filas = db.execute("""SELECT a.id,a.nombre,a.materia FROM aulas a
+                        filas = db.execute("""SELECT a.id,a.nombre,a.materia,a.nivel,a.grado FROM aulas a
                           JOIN inscripciones i ON i.aula_id=a.id
                           WHERE i.alumno_id=? ORDER BY a.id DESC""",(user["id"],)).fetchall()
                     aulas = [dict(row) for row in filas]
@@ -249,16 +252,30 @@ class Handler(BaseHTTPRequestHandler):
                     raise ErrorUsuario("Solo docentes pueden crear clases",403)
                 nombre = texto_corto(datos.get("nombre"),100)
                 materia = texto_corto(datos.get("materia"),100)
+                nivel=datos.get("nivel","sin_definir")
+                grado=datos.get("grado","")
+                if nivel not in ("primaria","secundaria"):raise ErrorUsuario("Elegí nivel educativo")
+                if not isinstance(grado,str) or not 1<=len(grado.strip())<=40:raise ErrorUsuario("Indicá grado o año")
                 with LOCK, conexion() as db:
                     for _ in range(8):
                         codigo = secrets.token_hex(4).upper()
                         try:
-                            db.execute("INSERT INTO aulas(docente_id,nombre,materia,codigo) VALUES (?,?,?,?)",(user["id"],nombre,materia,codigo))
+                            db.execute("INSERT INTO aulas(docente_id,nombre,materia,codigo,nivel,grado) VALUES (?,?,?,?,?,?)",(user["id"],nombre,materia,codigo,nivel,grado.strip()))
                             break
                         except sqlite3.IntegrityError:
                             continue
                     else: raise ErrorUsuario("No se pudo generar código")
                 return self.responder({"ok":True,"codigo":codigo},201)
+            if ruta == "/api/aulas/configurar":
+                if user["rol"]!="docente":raise ErrorUsuario("Solo docentes pueden configurar clases",403)
+                aula_id=int(datos.get("aula_id",0))
+                nivel=datos.get("nivel")
+                grado=datos.get("grado","")
+                if nivel not in ("primaria","secundaria") or not isinstance(grado,str) or not 1<=len(grado.strip())<=40:raise ErrorUsuario("Indicá nivel y grado/año")
+                with LOCK, conexion() as db:
+                    permiso_aula(db,user,aula_id,docente=True)
+                    db.execute("UPDATE aulas SET nivel=?,grado=? WHERE id=?",(nivel,grado.strip(),aula_id))
+                return self.responder({"ok":True})
             if ruta == "/api/aulas/unirse":
                 if user["rol"] != "alumno":
                     raise ErrorUsuario("Solo alumnos pueden unirse",403)
