@@ -234,3 +234,12 @@ button.atlas-v2-task:hover{background:#eaf7f2}
 .atlas-v2-card .atlas-v2-note + .atlas-v2-primary{margin-top:14px}
 .atlas-v2-card .atlas-v2-info + .atlas-v2-note{margin-top:15px}
 .atlas-v2-practice-question{scroll-margin-top:24px}
+
+/* Simulacro: tarjetas de alternativas integradas y separación visual */
+.atlas-v2-practice-question{padding:24px 12px 27px;margin:10px 0 16px;border-bottom:1px solid #dfeae5}
+.atlas-v2-practice-question>strong{display:block;margin-bottom:19px;line-height:1.6}
+.atlas-v2-practice-options{display:flex;flex-direction:column;gap:11px}
+.atlas-v2-practice-options label{display:flex!important;flex-direction:row!important;align-items:center;gap:13px!important;padding:14px 17px!important;background:#fff;border:1px solid #d7e8e2;border-radius:12px;margin:0!important;cursor:pointer;font-weight:400!important;line-height:1.5}
+.atlas-v2-practice-options label:has(input:checked){background:#e9f7f0;border-color:#239a82}
+.atlas-v2-practice-options input[type=radio]{width:18px;height:18px;flex-shrink:0;accent-color:#128976}
+.atlas-v2-practice-options span{flex:1;min-width:0;overflow-wrap:anywhere}
