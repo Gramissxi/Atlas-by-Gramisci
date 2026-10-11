@@ -250,3 +250,8 @@ button.atlas-v2-task:hover{background:#eaf7f2}
 .atlas-v2-card .atlas-v2-simulacro-espera span{display:block}
 
 .atlas-v2-config-clase{margin-top:18px}.atlas-v2-config-clase form{max-width:560px}
+
+.atlas-v2-invite-code{display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:8px;padding:6px 11px;background:#e0f5eb;border:1px solid #b8e5d1;border-radius:9px;color:#176b56;font-size:12px;font-weight:600}
+.atlas-v2-invite-code strong{font-size:16px;letter-spacing:1.2px;font-weight:800;color:#095d4f}
+.atlas-v2-copy-code{display:inline-flex;align-items:center;gap:5px;padding:7px 9px;background:#f2faf6;border:1px solid #cee7dc;border-radius:9px;color:#176f5d;font-size:12px;font-weight:650;white-space:nowrap}
+.atlas-v2-copy-code:hover{background:#dcf5e9}
