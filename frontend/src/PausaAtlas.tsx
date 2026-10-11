@@ -51,15 +51,50 @@ function barajar<T,>(lista:T[]):T[]{
   return nueva;
 }
 
-function JuegoPreguntas({banco}:{banco:Banco}){
+const preguntasExtra:Record<string,Reto[]>={
+ p1:[
+ {pregunta:"¿Qué animal pone huevos?",opciones:["Gallina","Perro","Gato"],correcta:0,explicacion:"Las gallinas nacen de huevos."},
+ {pregunta:"¿Qué número sigue después de 19?",opciones:["18","20","21"],correcta:1,explicacion:"Después del 19 viene el 20."},
+ {pregunta:"¿Qué usamos para escuchar?",opciones:["Oídos","Manos","Rodillas"],correcta:0,explicacion:"Escuchamos los sonidos con los oídos."},
+ {pregunta:"¿Cuál palabra empieza con M?",opciones:["Mesa","Casa","Sapo"],correcta:0,explicacion:"Mesa empieza con la letra M."}],
+ p2:[
+ {pregunta:"¿Qué planeta habitamos?",opciones:["Marte","Tierra","Venus"],correcta:1,explicacion:"Vivimos en el planeta Tierra."},
+ {pregunta:"¿Qué es 100 dividido 10?",opciones:["10","20","1000"],correcta:0,explicacion:"Diez grupos de diez forman cien."},
+ {pregunta:"¿Qué palabra es un verbo?",opciones:["Saltar","Azul","Casa"],correcta:0,explicacion:"Saltar expresa una acción."},
+ {pregunta:"¿Cuántos minutos tiene una hora?",opciones:["30","60","100"],correcta:1,explicacion:"Una hora contiene sesenta minutos."}],
+ p3:[
+ {pregunta:"¿Cuál es la capital de Argentina?",opciones:["Córdoba","Buenos Aires","Rosario"],correcta:1,explicacion:"La capital nacional es la Ciudad Autónoma de Buenos Aires."},
+ {pregunta:"¿Cuánto es 3/4 de 20?",opciones:["10","15","18"],correcta:1,explicacion:"Dividís 20 por 4 y multiplicás por 3: 15."},
+ {pregunta:"¿Qué órgano bombea la sangre?",opciones:["Corazón","Hígado","Pulmón"],correcta:0,explicacion:"El corazón impulsa la sangre por el cuerpo."},
+ {pregunta:"¿Qué ocurrió en Argentina el 9 de julio de 1816?",opciones:["Declaración de independencia","Primera Junta","Constitución de 1853"],correcta:0,explicacion:"Ese día se declaró la independencia."}],
+ s1:[
+ {pregunta:"¿Cuál es el resultado de (-3) × 4?",opciones:["12","-12","-7"],correcta:1,explicacion:"Un negativo por un positivo da negativo."},
+ {pregunta:"¿Cuál es el continente donde se encuentra Argentina?",opciones:["América","África","Europa"],correcta:0,explicacion:"Argentina está en América del Sur."},
+ {pregunta:"¿Qué estado de la materia mantiene volumen pero no forma fija?",opciones:["Sólido","Líquido","Gas"],correcta:1,explicacion:"Un líquido toma la forma del recipiente."},
+ {pregunta:"¿Qué tipo de palabra es rápidamente?",opciones:["Verbo","Sustantivo","Adverbio"],correcta:2,explicacion:"Modifica una acción, generalmente indicando modo."}],
+ s2:[
+ {pregunta:"¿Cuál es el área de un triángulo de base 8 y altura 5?",opciones:["40","20","13"],correcta:1,explicacion:"Área = base × altura / 2 = 20."},
+ {pregunta:"¿Qué gas capturan las plantas durante la fotosíntesis?",opciones:["Oxígeno","Dióxido de carbono","Helio"],correcta:1,explicacion:"Utilizan dióxido de carbono para producir materia orgánica."},
+ {pregunta:"¿Qué pasó en 1810 en Buenos Aires?",opciones:["Revolución de Mayo","Independencia","Sanción de la Constitución"],correcta:0,explicacion:"La Revolución de Mayo ocurrió en 1810."},
+ {pregunta:"¿Qué recurso literario compara usando «como»?",opciones:["Símil","Hipérbole","Ironía"],correcta:0,explicacion:"El símil expresa una comparación explícita."}],
+ s3:[
+ {pregunta:"¿Cuál es la probabilidad de cara en una moneda equilibrada?",opciones:["1/4","1/2","1"],correcta:1,explicacion:"Hay dos resultados equiprobables."},
+ {pregunta:"¿Qué representa la pendiente de una función lineal?",opciones:["Tasa de cambio","Valor máximo","Dominio"],correcta:0,explicacion:"Indica cuánto varía y por cada unidad de x."},
+ {pregunta:"¿Qué molécula transporta información genética?",opciones:["ADN","Agua","Glucosa"],correcta:0,explicacion:"El ADN almacena información hereditaria."},
+ {pregunta:"¿Qué hecho histórico ocurrió en 1983 en Argentina?",opciones:["Retorno de la democracia","Independencia","Primera Junta"],correcta:0,explicacion:"En 1983 se restableció el gobierno democrático."}]
+};
+function JuegoPreguntas({banco,grupo}:{banco:Banco;grupo:string}){
+  const preguntas=[...banco.preguntas,...(preguntasExtra[grupo]||[])];
+  const [orden,setOrden]=useState<number[]>(()=>barajar(preguntas.map((_,i)=>i)));
+
   const [indice,setIndice]=useState(0);
   const [respuesta,setRespuesta]=useState<number|null>(null);
   const [puntos,setPuntos]=useState(0);
-  const pregunta=banco.preguntas[indice];
-  const terminado=indice>=banco.preguntas.length;
+  const pregunta=preguntas[orden[indice]];
+  const terminado=indice>=orden.length;
   return <div className="atlas-juego-cuerpo">
-    <p className="atlas-juego-subtitulo">Preguntados · {Math.min(indice+1,banco.preguntas.length)} de {banco.preguntas.length} · {puntos} puntos</p>
-    {terminado?<><h3>¡Terminaste!</h3><p>Lograste {puntos} de {banco.preguntas.length} respuestas correctas.</p><button className="atlas-boton" onClick={()=>{setIndice(0);setRespuesta(null);setPuntos(0);}}>Volver a jugar</button></>:<>
+    <p className="atlas-juego-subtitulo">Preguntados · {Math.min(indice+1,orden.length)} de {orden.length} · {puntos} puntos</p>
+    {terminado?<><h3>¡Terminaste!</h3><p>Lograste {puntos} de {orden.length} respuestas correctas.</p><button className="atlas-boton" onClick={()=>{setIndice(0);setRespuesta(null);setPuntos(0);setOrden(prev=>{const nuevo=barajar(preguntas.map((_,i)=>i));if(nuevo[0]===prev[0]&&nuevo.length>1){[nuevo[0],nuevo[1]]=[nuevo[1],nuevo[0]];}return nuevo;});}}>Volver a jugar</button></>:<>
       <h3>{pregunta.pregunta}</h3>
       <div className="atlas-juego-opciones">{pregunta.opciones.map((op,i)=><button key={op} disabled={respuesta!==null} className={respuesta!==null&&i===pregunta.correcta?"correcta":respuesta===i?"incorrecta":""} onClick={()=>{setRespuesta(i);if(i===pregunta.correcta)setPuntos(p=>p+1);}}>{op}</button>)}</div>
       {respuesta!==null&&<div className="atlas-juego-explicacion" role="status"><strong>{respuesta===pregunta.correcta?"¡Correcto!":"A seguir practicando."}</strong><p>{pregunta.explicacion}</p><button className="atlas-boton" onClick={()=>{setIndice(i=>i+1);setRespuesta(null);}}>Siguiente</button></div>}
@@ -183,6 +218,6 @@ export default function PausaAtlas({etapa,grado=""}:{etapa:Etapa;grado?:string})
       <button className={juego==="memoria"?"seleccionado":""} onClick={()=>setJuego("memoria")}><Puzzle size={19}/> Memoria</button>
       <button className={juego==="dibujo"?"seleccionado":""} onClick={()=>setJuego("dibujo")}><Paintbrush size={19}/> Dibujar</button>
     </div>
-    <div className="atlas-juego-panel" key={juego+"-"+etapa+"-"+grado}>{juego==="preguntas"?<JuegoPreguntas banco={banco}/>:juego==="memoria"?<JuegoMemoria banco={banco} grupo={grupo}/>:<Lienzo/>}</div>
+    <div className="atlas-juego-panel" key={juego+"-"+etapa+"-"+grado}>{juego==="preguntas"?<JuegoPreguntas banco={banco} grupo={grupo}/>:juego==="memoria"?<JuegoMemoria banco={banco} grupo={grupo}/>:<Lienzo/>}</div>
   </section>;
 }
