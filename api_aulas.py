@@ -55,6 +55,7 @@ def conexion():
         id INTEGER PRIMARY KEY, aula_id INTEGER NOT NULL REFERENCES aulas(id),
         nombre TEXT NOT NULL, paginas INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS documentos_archivos (documento_id INTEGER PRIMARY KEY REFERENCES documentos(id), contenido BLOB NOT NULL);
     CREATE TABLE IF NOT EXISTS evaluaciones (id INTEGER PRIMARY KEY, aula_id INTEGER NOT NULL REFERENCES aulas(id), titulo TEXT NOT NULL, documentos_ids TEXT NOT NULL, preguntas TEXT NOT NULL, estado TEXT NOT NULL DEFAULT 'borrador' CHECK(estado IN ('borrador','publicada')), creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, publicado_en TEXT);
     CREATE TABLE IF NOT EXISTS entregas_evaluacion (evaluacion_id INTEGER NOT NULL REFERENCES evaluaciones(id), alumno_id INTEGER NOT NULL REFERENCES usuarios(id), respuestas TEXT NOT NULL, entregado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(evaluacion_id,alumno_id));
     CREATE TABLE IF NOT EXISTS calificaciones (
@@ -171,7 +172,7 @@ class Handler(BaseHTTPRequestHandler):
                           WHERE i.alumno_id=? ORDER BY a.id DESC""",(user["id"],)).fetchall()
                     aulas = [dict(row) for row in filas]
                     for aula in aulas:
-                        aula["documentos"] = [dict(x) for x in db.execute("SELECT id,nombre,paginas FROM documentos WHERE aula_id=?",(aula["id"],))]
+                        aula["documentos"] = [dict(x) for x in db.execute("SELECT d.id,d.nombre,d.paginas,CASE WHEN f.documento_id IS NULL THEN 0 ELSE 1 END AS descargable FROM documentos d LEFT JOIN documentos_archivos f ON f.documento_id=d.id WHERE d.aula_id=?",(aula["id"],))]
                 return self.responder({"aulas":aulas})
             if self.path == "/api/aulas/evaluaciones":
                 with conexion() as db:
@@ -292,9 +293,19 @@ class Handler(BaseHTTPRequestHandler):
                 with LOCK, conexion() as db:
                     permiso_aula(db,user,aula_id,docente=True)
                     doc_id = db.execute("INSERT INTO documentos(aula_id,nombre,paginas) VALUES (?,?,?)",(aula_id,nombre,len(reader.pages))).lastrowid
+                    db.execute("INSERT INTO documentos_archivos(documento_id,contenido) VALUES (?,?)",(doc_id,contenido))
                     db.executemany("INSERT INTO fragmentos(documento_id,aula_id,pagina,texto) VALUES (?,?,?,?)",
                             ((doc_id,aula_id,p,t) for p,t in fragmentos))
                 return self.responder({"ok":True,"fragmentos":len(fragmentos)},201)
+            if ruta == "/api/aulas/documento":
+                documento_id=int(datos.get("documento_id",0))
+                with conexion() as db:
+                    doc=db.execute("SELECT id,aula_id,nombre FROM documentos WHERE id=?",(documento_id,)).fetchone()
+                    if not doc:raise ErrorUsuario("Documento inexistente",404)
+                    permiso_aula(db,user,doc["aula_id"])
+                    archivo=db.execute("SELECT contenido FROM documentos_archivos WHERE documento_id=?",(documento_id,)).fetchone()
+                    if not archivo:raise ErrorUsuario("El PDF original no está guardado. Pedile al docente que lo vuelva a subir.",404)
+                    return self.responder({"nombre":doc["nombre"],"base64":base64.b64encode(archivo["contenido"]).decode("ascii")})
             if ruta == "/api/aulas/evaluaciones/generar":
                 if user["rol"]!="docente":raise ErrorUsuario("Solo docentes pueden generar evaluaciones",403)
                 aula_id=int(datos.get("aula_id",0))
