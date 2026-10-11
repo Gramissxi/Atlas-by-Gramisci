@@ -15,6 +15,7 @@ import re
 import secrets
 import sqlite3
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -270,6 +271,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not tokens:
                     raise ErrorUsuario("Escribí una pregunta más específica")
                 expresion = " OR ".join('"'+t+'"' for t in tokens)
+                inicio_recuperacion = time.perf_counter()
                 with conexion() as db:
                     aula = permiso_aula(db,user,aula_id)
                     # Consulta primero los fragmentos efectivamente asociados al aula.
@@ -284,26 +286,9 @@ class Handler(BaseHTTPRequestHandler):
                             "estado": "SIN_INDICE",
                             "detalle": "Hay documentos publicados, pero no hay fragmentos indexados para esta clase. Es necesario reconstruir el índice."
                         })
-                    # Evitar depender de coincidencias exactas de FTS en la primera
-                    # versión del prototipo: puntaje lexical local con SQLite.
-                    # Solo se buscan fragmentos del aula autorizada.
-                    candidatos = db.execute("""SELECT d.nombre, f.pagina, f.texto
-                        FROM fragmentos f
-                        JOIN documentos d ON d.id=CAST(f.documento_id AS INTEGER)
-                        WHERE f.aula_id=? LIMIT 20000""", (aula_id,)).fetchall()
-                    import unicodedata
-                    def normalizar(texto):
-                        return "".join(c for c in unicodedata.normalize("NFKD", texto.casefold())
-                            if not unicodedata.combining(c))
-                    tokens_norm = list(dict.fromkeys(normalizar(t) for t in tokens))
-                    ordenados = []
-                    for candidato in candidatos:
-                        contenido = normalizar(candidato["texto"])
-                        presentes = sum(1 for t in tokens_norm if t in contenido)
-                        if presentes:
-                            ordenados.append((presentes, dict(candidato)))
-                    ordenados.sort(key=lambda x: x[0], reverse=True)
-                    filas = [r for _, r in ordenados[:5]]
+                    from services.recuperacion_aulas import recuperar
+                    filas = recuperar(db, aula_id, pregunta, limite=5)
+                segundos_recuperacion = round(time.perf_counter() - inicio_recuperacion, 3)
                 from services.generador_rag_aulas import responder_con_documentos
                 # La autorización se verificó antes de recuperar el contexto.
                 generado = responder_con_documentos(pregunta, filas, materia=aula["materia"])
@@ -311,6 +296,7 @@ class Handler(BaseHTTPRequestHandler):
                     "resultados": filas,
                     "estado": "OK" if filas else "SIN_COINCIDENCIAS",
                     "fragmentos_disponibles": total,
+                    "segundos_recuperacion": segundos_recuperacion,
                     **generado,
                 })
 
