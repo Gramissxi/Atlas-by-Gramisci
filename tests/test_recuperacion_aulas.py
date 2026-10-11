@@ -27,6 +27,13 @@ class RecuperacionAulasTests(unittest.TestCase):
         r = recuperar(self.db, 1, "secreto entropía información")
         self.assertTrue(all("secreto" not in x["texto"] for x in r))
 
+    def test_prioriza_definicion_sobre_temario(self):
+        self.db.execute("INSERT INTO fragmentos VALUES (1,1,2,'Índice\\nCanal de comunicación\\nRuido\\nEmisor\\nReceptor\\nSeñal\\nCódigos')")
+        self.db.execute("INSERT INTO fragmentos VALUES (1,1,31,'El canal de comunicación es el medio físico y lógico que conecta emisor y receptor.')")
+        resultado = recuperar(self.db, 1, "¿Qué es el canal de comunicación?")
+        self.assertTrue(resultado)
+        self.assertEqual(resultado[0]["pagina"],31)
+
     def test_consulta_sencilla(self):
         r = recuperar(self.db, 1, "informacion")
         self.assertTrue(r)
