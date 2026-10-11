@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type FormEvent, type ReactNode } from "react";
-import { BookOpen, GraduationCap, LogOut, Upload, Users, ClipboardList, ChevronDown, ChevronUp, LayoutDashboard, FolderOpen, Sparkles, ArrowRight, FileText, Menu, X, Clock3, CheckCircle2, PlayCircle } from "lucide-react";
+import { BookOpen, GraduationCap, LogOut, Upload, Users, ClipboardList, ChevronDown, ChevronUp, LayoutDashboard, FolderOpen, Sparkles, ArrowRight, FileText, Menu, X, Clock3, CheckCircle2, PlayCircle, Copy } from "lucide-react";
 import PausaAtlas from "./PausaAtlas";
 import "./atlas-inicio.css";
 
