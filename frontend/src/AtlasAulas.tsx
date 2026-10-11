@@ -156,7 +156,7 @@ export default function AtlasAulas() {
       {(usuario.rol==="docente" || vistaAlumno!=="inicio") &&       <section className="atlas-pagina atlas-aulas-dashboard">
         {usuario.rol==="docente" && <div className="atlas-aulas-hero"><span className="atlas-sobrelinea">{usuario.rol==="docente"?"Tu espacio de enseñanza":"Tu espacio para aprender"}</span><h1>{usuario.rol==="docente"?"Panel docente":"Mis clases"}</h1>
         <p>{usuario.rol==="docente"?"Creá clases, compartí el código e incorporá documentos. Solo tu cuenta puede publicar materiales en tus clases.":"Ingresá el código que te dio tu docente y consultá los materiales de tu clase."}</p></div>}
-        {(usuario.rol==="docente" || vistaAlumno==="clases") && (usuario.rol==="docente" ? <form className="atlas-caja atlas-formulario atlas-aulas-card" onSubmit={e=>{e.preventDefault();void ejecutar(()=>llamar("/api/aulas/crear",{nombre:nombreAula,materia}),"Clase creada. Compartí su código con tus estudiantes.");}}>
+        {((usuario.rol==="docente" && vistaDocente==="clases") || vistaAlumno==="clases") && (usuario.rol==="docente" ? <form className="atlas-caja atlas-formulario atlas-aulas-card" onSubmit={e=>{e.preventDefault();void ejecutar(()=>llamar("/api/aulas/crear",{nombre:nombreAula,materia}),"Clase creada. Compartí su código con tus estudiantes.");}}>
           <h2>Crear clase</h2><label htmlFor="n-aula">Nombre del curso</label><input id="n-aula" required value={nombreAula} onChange={e=>setNombreAula(e.target.value)} placeholder="Ej.: 5.º A"/>
           <label htmlFor="m-aula">Materia</label><input id="m-aula" required value={materia} onChange={e=>setMateria(e.target.value)} placeholder="Ej.: Ciencias Naturales"/>
           <button className="atlas-boton" disabled={ocupado} type="submit">Crear clase y código</button>
@@ -175,7 +175,18 @@ export default function AtlasAulas() {
           {usuario.rol==="docente"&&<p><strong>Código de invitación:</strong> <code>{aula.codigo}</code></p>}
           <h3><BookOpen size={18} style={{display:"inline",verticalAlign:"middle"}}/> Material de la clase</h3>
           {!aula.documentos.length?<p>Todavía no hay documentos publicados.</p>:<ul>{aula.documentos.map(d=><li key={d.id}>{d.nombre} · {d.paginas} páginas</li>)}</ul>}
-          {usuario.rol==="docente"&&<div style={{marginTop:18}}>
+          {aula.documentos.length>0 && (usuario.rol==="alumno" || vistaDocente==="evaluaciones") && <div className="atlas-documentos-elegir">
+            <h3>Elegir PDF {usuario.rol==="alumno" && vistaAlumno==="tutor"?"para consultar":"para actividades"}</h3>
+            <p>Podés elegir uno, varios o todos los documentos. Las páginas se eligen automáticamente.</p>
+            <button className="atlas-enlace" type="button" onClick={()=>setDocumentosElegidos([])}>Seleccionar todos los PDF</button>
+            {aula.documentos.map(d=><label className="atlas-doc-check" key={d.id}><input type="checkbox" checked={documentosElegidos.length===0 || documentosElegidos.includes(d.id)} onChange={e=>{
+              const anteriores=documentosElegidos.length?aula.documentos.filter(x=>documentosElegidos.includes(x.id)).map(x=>x.id):aula.documentos.map(x=>x.id);
+              const nuevos=e.target.checked?[...new Set([...anteriores,d.id])]:anteriores.filter(id=>id!==d.id);
+              setDocumentosElegidos(nuevos.length===aula.documentos.length?[]:nuevos);
+            }}/><span>{d.nombre} <small>({d.paginas} páginas)</small></span></label>)}
+            <small>{documentosElegidos.length===0?"Todos los PDF seleccionados":documentosElegidos.length+" PDF seleccionados"}</small>
+          </div>}
+          {usuario.rol==="docente" && vistaDocente==="clases" && <div style={{marginTop:18}}>
             <h3><Upload size={18}/> Subir PDF para esta clase</h3><input type="file" accept=".pdf,application/pdf" onChange={e=>setArchivo(e.target.files?.[0]||null)}/>
             <button className="atlas-boton" disabled={!archivo||ocupado} onClick={()=>void ejecutar(subir,"PDF indexado y disponible para esta clase.")}>Publicar documento</button>
           </div>}
@@ -194,6 +205,11 @@ export default function AtlasAulas() {
             </div>}
             {resultados.length>0&&<div aria-live="polite"><h3>Fuentes encontradas</h3><p>Seleccioná una referencia para ver el fragmento de esa página.</p>{resultados.map((r,i)=><article className="atlas-fuente" key={i}><button type="button" aria-expanded={fuentesAbiertas.includes(i)} onClick={()=>setFuentesAbiertas(prev=>prev.includes(i)?prev.filter(x=>x!==i):[...prev,i])}><span>{r.nombre} · página {r.pagina}</span>{fuentesAbiertas.includes(i)?<ChevronUp size={17}/>:<ChevronDown size={17}/>}</button>{fuentesAbiertas.includes(i)&&<p>{r.texto}</p>}</article>)}</div>}
           </>}
+          {((usuario.rol==="alumno" && vistaAlumno==="practicar") || (usuario.rol==="docente" && vistaDocente==="evaluaciones")) && <div className="atlas-configuracion">
+            <h3><ClipboardList size={19}/> {usuario.rol==="docente"?"Crear evaluación":"Mi simulacro"}</h3>
+            <p>{usuario.rol==="docente"?"La docente selecciona los PDF y revisará las preguntas antes de publicarlas.":"El alumno podrá practicar con uno, varios o todos los documentos seleccionados."}</p>
+            <div className="atlas-aviso">Vista de planificación: la generación y corrección de actividades todavía no están implementadas. No se publican evaluaciones automáticamente.</div>
+          </div>}
         </div>}
         {usuario.rol==="alumno"&&vistaAlumno==="pausa"&&<div className="atlas-caja" style={{marginTop:18}}>
           <button className="atlas-enlace" onClick={()=>setPausa(!pausa)}>{pausa?"Cerrar desafíos":"Pausa y desafíos"}</button>
