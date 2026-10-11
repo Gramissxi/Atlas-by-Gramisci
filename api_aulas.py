@@ -326,7 +326,7 @@ class Handler(BaseHTTPRequestHandler):
                 if user["rol"]!="docente":raise ErrorUsuario("Solo docentes pueden descargar esta copia",403)
                 evaluacion_id=int(datos.get("evaluacion_id",0))
                 with conexion() as db:
-                    eva=db.execute("SELECT aula_id,titulo,preguntas FROM evaluaciones WHERE id=?",(evaluacion_id,)).fetchone()
+                    eva=db.execute("SELECT e.aula_id,e.titulo,e.preguntas,a.nombre AS curso,a.materia FROM evaluaciones e JOIN aulas a ON a.id=e.aula_id WHERE e.id=?",(evaluacion_id,)).fetchone()
                     if not eva:raise ErrorUsuario("Evaluación inexistente",404)
                     permiso_aula(db,user,eva["aula_id"],docente=True)
                 try:
@@ -363,13 +363,12 @@ class Handler(BaseHTTPRequestHandler):
                         else:actual=nuevo
                     if actual:trozos.append(actual)
                     return trozos
-                for texto,tam in [(eva["titulo"],16),("Nombre y apellido: __________________________",11)]:
+                for texto,tam in [("Materia: "+eva["materia"]+"   |   Curso: "+eva["curso"],11),(eva["titulo"],16)]:
                     for fragmento in envolver(texto):linea(fragmento,tam,26)
                 y-=12
                 for i,pregunta in enumerate(json.loads(eva["preguntas"]),1):
                     for fragmento in envolver(str(i)+". "+pregunta):linea(fragmento)
-                    linea("________________________________________________________",11,24)
-                    y-=18
+                    y-=12
                 pagina.save()
                 return self.responder({"nombre":eva["titulo"]+".pdf","base64":base64.b64encode(salida.getvalue()).decode("ascii")})
             if ruta == "/api/aulas/documento":
