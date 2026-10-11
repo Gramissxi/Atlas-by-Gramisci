@@ -46,8 +46,12 @@ export default function AtlasAulas() {
       headers:{"Content-Type":"application/json",...(autenticacion?{"Authorization":"Bearer "+autenticacion}:{})},
       ...(body?{body:JSON.stringify(body)}:{})
     });
-    const datos=await respuesta.json();
-    if(!respuesta.ok) throw new Error(datos.error || "No se pudo completar la solicitud");
+    const cuerpo=await respuesta.text();
+    let datos:Record<string,unknown>;
+    try { datos=cuerpo?JSON.parse(cuerpo) as Record<string,unknown>:{}; }
+    catch {throw new Error("El servidor devolvió una respuesta no válida. Revisá la terminal de api_aulas.py.");}
+    if(!respuesta.ok) throw new Error(typeof datos.error==="string"?datos.error:"Error de servidor ("+respuesta.status+"). Revisá api_aulas.py.");
+    if(!cuerpo) throw new Error("El servidor no devolvió datos. Revisá api_aulas.py.");
     return datos;
   }
   async function actualizar(t=token) {
