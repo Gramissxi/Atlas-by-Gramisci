@@ -243,3 +243,8 @@ button.atlas-v2-task:hover{background:#eaf7f2}
 .atlas-v2-practice-options label:has(input:checked){background:#e9f7f0;border-color:#239a82}
 .atlas-v2-practice-options input[type=radio]{width:18px;height:18px;flex-shrink:0;accent-color:#128976}
 .atlas-v2-practice-options span{flex:1;min-width:0;overflow-wrap:anywhere}
+
+/* Separación clara durante la generación del simulacro */
+.atlas-v2-card .atlas-v2-simulacro-espera{margin-top:22px!important;padding:16px 18px!important;display:flex;align-items:flex-start;gap:12px;line-height:1.6}
+.atlas-v2-card .atlas-v2-simulacro-espera svg{flex-shrink:0;margin-top:2px}
+.atlas-v2-card .atlas-v2-simulacro-espera span{display:block}
