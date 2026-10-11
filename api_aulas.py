@@ -380,6 +380,31 @@ class Handler(BaseHTTPRequestHandler):
                     archivo=db.execute("SELECT contenido FROM documentos_archivos WHERE documento_id=?",(documento_id,)).fetchone()
                     if not archivo:raise ErrorUsuario("El PDF original no está guardado. Pedile al docente que lo vuelva a subir.",404)
                     return self.responder({"nombre":doc["nombre"],"base64":base64.b64encode(archivo["contenido"]).decode("ascii")})
+            if ruta == "/api/aulas/practicar/generar":
+                if user["rol"]!="alumno":raise ErrorUsuario("Solo alumnos pueden crear simulacros personales",403)
+                aula_id=int(datos.get("aula_id",0))
+                ids=datos.get("documentos_ids")
+                cantidad=datos.get("cantidad",5)
+                dificultad=datos.get("dificultad","media")
+                formato=datos.get("formato","mixto")
+                if type(cantidad) is not int or cantidad not in (5,10,15):
+                    raise ErrorUsuario("Elegí 5, 10 o 15 preguntas")
+                if dificultad not in ("basica","media","avanzada") or formato not in ("mixto","multiple","desarrollo"):
+                    raise ErrorUsuario("Configuración inválida")
+                if not isinstance(ids,list) or not ids or len(ids)>100 or any(type(i) is not int or i<=0 for i in ids):
+                    raise ErrorUsuario("Seleccioná documentos válidos")
+                ids=list(dict.fromkeys(ids))
+                with conexion() as db:
+                    permiso_aula(db,user,aula_id)
+                    disponibles={x[0] for x in db.execute("SELECT id FROM documentos WHERE aula_id=?",(aula_id,))}
+                    if not set(ids).issubset(disponibles):raise ErrorUsuario("Documento fuera de tu clase",403)
+                    from services.recuperacion_aulas import recuperar
+                    fuentes=recuperar(db,aula_id,"conceptos definiciones ejemplos ejercicios teoría contenidos",limite=10,documentos_ids=ids)
+                if not fuentes:raise ErrorUsuario("No se encontraron fragmentos para generar preguntas")
+                from services.generador_evaluaciones_aulas import generar_preguntas
+                try:preguntas=generar_preguntas(fuentes,cantidad,dificultad,formato)
+                except ValueError as exc:raise ErrorUsuario(str(exc),503)
+                return self.responder({"preguntas":preguntas})
             if ruta == "/api/aulas/evaluaciones/generar":
                 if user["rol"]!="docente":raise ErrorUsuario("Solo docentes pueden generar evaluaciones",403)
                 aula_id=int(datos.get("aula_id",0))
