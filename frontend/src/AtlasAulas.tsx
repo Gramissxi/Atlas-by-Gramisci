@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, type FormEvent } from "react";
 import { BookOpen, GraduationCap, LogOut, Upload, Users } from "lucide-react";
 import PausaAtlas from "./PausaAtlas";
 import "./atlas-inicio.css";
@@ -48,7 +48,7 @@ export default function AtlasAulas() {
     setSeleccion(actual=>datos.aulas.some((a:Aula)=>a.id===actual)?actual:(datos.aulas[0]?.id??null));
   }
   // Se mantiene el acceso en memoria durante esta sesión del navegador.
-  async function autenticar(e:React.FormEvent) {
+  async function autenticar(e:FormEvent) {
     e.preventDefault();setOcupado(true);setEstado("");
     try{
       if(modo==="crear"){
@@ -78,7 +78,7 @@ export default function AtlasAulas() {
     await llamar("/api/aulas/subir",{aula_id:seleccion,nombre:archivo.name,base64});
     setArchivo(null);
   }
-  async function preguntar(e:React.FormEvent){
+  async function preguntar(e:FormEvent){
     e.preventDefault();
     if(seleccion===null)return;
     setOcupado(true);setEstado("");setResultados([]);
