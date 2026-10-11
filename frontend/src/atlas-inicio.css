@@ -198,3 +198,19 @@ button.atlas-v2-task:hover{background:#eaf7f2}
 .atlas-v2-eval-left .atlas-v2-task{flex-wrap:wrap}
 .atlas-v2-eval-left .atlas-v2-task>span{min-width:150px}
 @media(max-width:850px){.atlas-v2-eval-left{gap:16px}}
+
+/* Vista previa docente con impresión limpia en papel/PDF */
+.atlas-v2-eval-open{scroll-margin-top:28px}
+.atlas-v2-print-preview{margin-top:18px}
+.atlas-v2-print-preview .atlas-v2-row-between>div{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.atlas-v2-print-area{padding:20px 12px;max-width:850px;margin:0 auto}
+.atlas-v2-print-area h2{font-size:23px}
+.atlas-v2-print-area>div{margin:24px 0;break-inside:avoid}
+.atlas-v2-answer-lines{margin-top:12px;height:70px;border-bottom:1px solid #aebbb5;background:repeating-linear-gradient(to bottom,transparent 0,transparent 26px,#d7dfda 27px)}
+@media print{
+ body *{visibility:hidden!important}
+ .atlas-v2-print-area,.atlas-v2-print-area *{visibility:visible!important}
+ .atlas-v2-print-area{position:absolute;left:0;top:0;width:100%;max-width:none;padding:12mm;background:white;color:#111}
+ .atlas-v2-print-preview{border:0!important;padding:0!important}
+ @page{size:A4;margin:14mm}
+}
