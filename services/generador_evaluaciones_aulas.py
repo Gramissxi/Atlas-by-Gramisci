@@ -10,6 +10,15 @@ from urllib.request import Request, urlopen
 def generar_preguntas(fragmentos, cantidad, dificultad, formato, modelo=None):
     if not fragmentos:
         raise ValueError("No hay fragmentos útiles para generar preguntas")
+    if formato=="mixto":
+        n_multiple=(cantidad+1)//2
+        n_desarrollo=cantidad//2
+        multiples=generar_preguntas(fragmentos,n_multiple,dificultad,"multiple",modelo)
+        desarrollos=generar_preguntas(fragmentos,n_desarrollo,dificultad,"desarrollo",modelo) if n_desarrollo else []
+        combinadas=[]
+        for i in range(cantidad):
+            combinadas.append(multiples[i//2] if i%2==0 else desarrollos[i//2])
+        return combinadas
     modelo = modelo or os.getenv("ATLAS_MODELO_CHAT", "llama3.2:3b")
     fuentes = "\n\n".join(
         f"[Documento: {x['nombre']} · página {x['pagina']}]\n{x['texto'][:850]}"
@@ -23,9 +32,8 @@ def generar_preguntas(fragmentos, cantidad, dificultad, formato, modelo=None):
         "Basate EXCLUSIVAMENTE en los textos suministrados. "
         "Devolvé un objeto JSON con la clave preguntas, cuyo valor es una lista de objetos con enunciado. Cada pregunta debe ser clara y comprobable. "
         "No inventes información, no pidas contenido que las fuentes no cubren. "
-        "Para formato opción múltiple incluí alternativas A, B, C y D dentro de cada enunciado; "
-        "para formato desarrollo redactá preguntas abiertas; para mixto alterná ambos tipos. "
-        "Cada alternativa debe ir en una línea separada y comenzar A), B), C) o D). No incluyas respuestas en el borrador."
+        "Para opción múltiple, el enunciado contiene solamente la pregunta y las alternativas van separadas en opciones. "
+        "Para desarrollo, devolvé únicamente el enunciado. No incluyas respuestas en el borrador."
     )
     pedido = f"Generá exactamente {cantidad} preguntas, dificultad {dificultad}, formato {formato}.\nFUENTES:\n{fuentes}"
     item={"type":"object","properties":{"enunciado":{"type":"string"}},"required":["enunciado"]}
