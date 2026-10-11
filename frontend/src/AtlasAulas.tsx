@@ -32,7 +32,7 @@ export default function AtlasAulas() {
   const [dificultadGeneracion,setDificultadGeneracion] = useState("media");
   const [formatoGeneracion,setFormatoGeneracion] = useState("mixto");
   const [avisosVistos,setAvisosVistos] = useState<number[]>([]);
-  const [evaluacionAbierta,setEvaluacionAbierta] = useState<{id:number;titulo:string;preguntas:string[]}|null>(null);
+  const [evaluacionAbierta,setEvaluacionAbierta] = useState<{id:number;titulo:string;preguntas:string[];entregada?:boolean;respuestas?:string[];calificacion?:{nota:number;comentario:string}|null}|null>(null);
   const [respuestasAlumno,setRespuestasAlumno] = useState<string[]>([]);
   const [nombreAula,setNombreAula] = useState("");
   const [materia,setMateria] = useState("");
@@ -168,7 +168,7 @@ export default function AtlasAulas() {
   }
   async function abrirEvaluacion(id:number) {
     setOcupado(true);setEstado("");
-    try {const datos=await llamar("/api/aulas/evaluaciones/ver",{evaluacion_id:id});setEvaluacionAbierta(datos.evaluacion);setRespuestasAlumno(datos.evaluacion.preguntas.map(()=>''));setVistaAlumno("actividades");}
+    try {const datos=await llamar("/api/aulas/evaluaciones/ver",{evaluacion_id:id});setEvaluacionAbierta(datos.evaluacion);setRespuestasAlumno(datos.evaluacion.respuestas??datos.evaluacion.preguntas.map(()=>''));setVistaAlumno("actividades");}
     catch(e){setEstado(e instanceof Error?e.message:"No se pudo abrir la actividad")}
     finally{setOcupado(false)}
   }
@@ -265,8 +265,13 @@ export default function AtlasAulas() {
       {vista==="actividades"&&usuario.rol==="alumno"&&<>
         <div className="atlas-v2-page-title"><small>ACTIVIDADES DEL DOCENTE</small><h1>Mis actividades</h1><p>Las evaluaciones publicadas por tus docentes aparecen aquí.</p></div>
         <div className="atlas-v2-row-between"><p>Las notas y comentarios quedan disponibles después de la corrección docente.</p><button className="atlas-v2-link" onClick={()=>setAvisosVistos(evaluaciones.filter(e=>e.nota!==null&&e.nota!==undefined).map(e=>e.id))}>Marcar avisos como vistos</button></div>
-        <section className="atlas-v2-card"><h2>Evaluaciones asignadas</h2>{evaluaciones.length?evaluaciones.map(e=><button key={e.id} className="atlas-v2-task" disabled={!!e.entregada} onClick={()=>void abrirEvaluacion(e.id)}><ClipboardList size={20}/><span><strong>{e.titulo}</strong><small>{e.materia} · {e.aula_nombre} · {e.entregada?(e.nota!==null&&e.nota!==undefined?"Corregida · Nota "+e.nota+"/10":"Entregada · Sin corregir"):"Pendiente"}</small></span>{e.entregada&&e.nota!==null&&e.nota!==undefined&&<span className="atlas-v2-graded">Nota {e.nota}/10{e.comentario&&<small>Devolución: {e.comentario}</small>}</span>}{!e.entregada&&<ArrowRight size={18}/>}</button>):<p>Todavía no hay actividades asignadas.</p>}</section>
-        {evaluacionAbierta&&<section className="atlas-v2-card atlas-v2-eval-open"><h2>{evaluacionAbierta.titulo}</h2><p>Respondé y entregá cuando termines. No hay corrección automática en esta versión.</p>{evaluacionAbierta.preguntas.map((q,i)=><label key={i}>{i+1}. {q}<textarea rows={3} value={respuestasAlumno[i]??""} onChange={e=>setRespuestasAlumno(old=>old.map((v,j)=>j===i?e.target.value:v))}/></label>)}<button className="atlas-v2-primary" disabled={ocupado} onClick={()=>void ejecutar(async()=>{await llamar("/api/aulas/evaluaciones/entregar",{evaluacion_id:evaluacionAbierta.id,respuestas:respuestasAlumno});setEvaluacionAbierta(null);},"Evaluación entregada correctamente.")}>Entregar evaluación</button></section>}
+        <section className="atlas-v2-card"><h2>Evaluaciones asignadas</h2>{evaluaciones.length?evaluaciones.map(e=><button key={e.id} className="atlas-v2-task" onClick={()=>void abrirEvaluacion(e.id)}><ClipboardList size={20}/><span><strong>{e.titulo}</strong><small>{e.materia} · {e.aula_nombre} · {e.entregada?(e.nota!==null&&e.nota!==undefined?"Corregida · Nota "+e.nota+"/10":"Entregada · Sin corregir"):"Pendiente"}</small></span>{e.entregada&&e.nota!==null&&e.nota!==undefined&&<span className="atlas-v2-graded">Nota {e.nota}/10{e.comentario&&<small>Devolución: {e.comentario}</small>}</span>}{!e.entregada&&<ArrowRight size={18}/>}</button>):<p>Todavía no hay actividades asignadas.</p>}</section>
+        {evaluacionAbierta&&<section className="atlas-v2-card atlas-v2-eval-open">
+          <div className="atlas-v2-row-between"><h2>{evaluacionAbierta.titulo}</h2><button className="atlas-v2-link" onClick={()=>setEvaluacionAbierta(null)}>Cerrar</button></div>
+          <p>{evaluacionAbierta.entregada?"Revisá las respuestas que entregaste.":"Respondé y entregá cuando termines."}</p>
+          {evaluacionAbierta.preguntas.map((q,i)=><label key={i}>{i+1}. {q}<textarea rows={3} readOnly={!!evaluacionAbierta.entregada} value={respuestasAlumno[i]??""} onChange={e=>setRespuestasAlumno(old=>old.map((v,j)=>j===i?e.target.value:v))}/></label>)}
+          {evaluacionAbierta.entregada?<div className="atlas-v2-feedback"><h3>{evaluacionAbierta.calificacion?"Calificación y devolución docente":"Entregada · Pendiente de corrección"}</h3>{evaluacionAbierta.calificacion&&<><strong>Nota: {evaluacionAbierta.calificacion.nota}/10</strong><p>{evaluacionAbierta.calificacion.comentario||"La docente no agregó comentarios."}</p></>}</div>:<button className="atlas-v2-primary" disabled={ocupado} onClick={()=>void ejecutar(async()=>{await llamar("/api/aulas/evaluaciones/entregar",{evaluacion_id:evaluacionAbierta.id,respuestas:respuestasAlumno});setEvaluacionAbierta(null);},"Evaluación entregada correctamente.")}>Entregar evaluación</button>}
+        </section>}
       </>}
       {vista==="evaluaciones"&&usuario.rol==="docente"&&<section className="atlas-v2-card atlas-v2-eval-list"><h2>Evaluaciones creadas</h2>{evaluaciones.length?evaluaciones.map(e=><div className="atlas-v2-task" key={e.id}><ClipboardList size={20}/><span><strong>{e.titulo}</strong><small>{e.materia} · {e.aula_nombre} · {e.estado==="publicada"?"Publicada":"Borrador"}</small></span>{e.estado==="borrador"&&<button className="atlas-v2-primary" disabled={ocupado} onClick={()=>void ejecutar(()=>llamar("/api/aulas/evaluaciones/publicar",{evaluacion_id:e.id}),"Evaluación publicada. Ya aparece en Mis actividades del alumnado.")}>Publicar</button>}</div>):<p>Todavía no creaste evaluaciones.</p>}</section>}
       {vista==="seguimiento"&&usuario.rol==="docente"&&<>
