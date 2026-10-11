@@ -383,9 +383,28 @@ class Handler(BaseHTTPRequestHandler):
                 for texto,tam in [("Materia: "+eva["materia"]+"   |   Curso: "+eva["curso"],11),(eva["titulo"],16)]:
                     for fragmento in envolver(texto):linea(fragmento,tam,26)
                 y-=12
+                import re
                 for i,pregunta in enumerate(json.loads(eva["preguntas"]),1):
-                    for fragmento in envolver(str(i)+". "+pregunta):linea(fragmento)
-                    y-=12
+                    # Soporta preguntas históricas con opciones seguidas o separadas por saltos.
+                    marcas=list(re.finditer(r"(?<![A-Za-zÁÉÍÓÚáéíóú])([A-D])[).:]\\s*",pregunta))
+                    if [m.group(1) for m in marcas]==["A","B","C","D"]:
+                        enunciado=pregunta[:marcas[0].start()].strip()
+                        opciones=[pregunta[m.end():marcas[j+1].start() if j<3 else None].strip()
+                                  for j,m in enumerate(marcas)]
+                        if not enunciado or not all(opciones):
+                            marcas=[]
+                    else:
+                        marcas=[]
+                    if marcas:
+                        for fragmento in envolver(str(i)+". "+enunciado):linea(fragmento,11,20)
+                        y-=4
+                        for letra,opcion in zip("ABCD",opciones):
+                            for fragmento in envolver("    "+letra+") "+opcion,ancho-115):
+                                linea(fragmento,10,17)
+                            y-=2
+                    else:
+                        for fragmento in envolver(str(i)+". "+pregunta):linea(fragmento)
+                    y-=14
                 pagina.save()
                 return self.responder({"nombre":eva["titulo"]+".pdf","base64":base64.b64encode(salida.getvalue()).decode("ascii")})
             if ruta == "/api/aulas/documento":
