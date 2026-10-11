@@ -68,8 +68,29 @@ function JuegoPreguntas({banco}:{banco:Banco}){
 }
 
 type Tarjeta={id:string;par:number;texto:string};
-function JuegoMemoria({banco}:{banco:Banco}){
-  const [cartas,setCartas]=useState<Tarjeta[]>(()=>barajar(banco.parejas.flatMap((p,i)=>[{id:"c"+i,par:i,texto:p.concepto},{id:"d"+i,par:i,texto:p.definicion}])));
+const parejasExtra:Record<string,Par[]>={
+  p1:[{concepto:"Luna",definicion:"Satélite natural"},{concepto:"Dos",definicion:"Número par"},{concepto:"Flor",definicion:"Parte de una planta"}],
+  p2:[{concepto:"3 × 3",definicion:"Nueve"},{concepto:"Adjetivo",definicion:"Describe"},{concepto:"Agua",definicion:"Líquido"}],
+  p3:[{concepto:"Perímetro",definicion:"Contorno"},{concepto:"Fotosíntesis",definicion:"Proceso de las plantas"},{concepto:"Fracción",definicion:"Parte de un entero"}],
+  s1:[{concepto:"Variable",definicion:"Cantidad que cambia"},{concepto:"Átomo",definicion:"Unidad de un elemento"},{concepto:"Mapa",definicion:"Representación territorial"}],
+  s2:[{concepto:"Energía",definicion:"Capacidad de producir cambios"},{concepto:"Ecuación",definicion:"Igualdad matemática"},{concepto:"Velocidad",definicion:"Distancia por tiempo"}],
+  s3:[{concepto:"Probabilidad",definicion:"Medida de posibilidad"},{concepto:"Función",definicion:"Relación entre variables"},{concepto:"Media",definicion:"Promedio aritmético"}]
+};
+function escogerTres(total:number,anteriores:number[]=[]){
+  let seleccion=barajar(Array.from({length:total},(_,i)=>i)).slice(0,3);
+  if(total>3 && seleccion.slice().sort().join(",")===anteriores.slice().sort().join(",")){
+    const diferente=Array.from({length:total},(_,i)=>i).find(i=>!anteriores.includes(i));
+    if(diferente!==undefined)seleccion=[...seleccion.slice(0,2),diferente];
+  }
+  return seleccion;
+}
+function prepararCartas(pares:Par[],indices:number[]):Tarjeta[]{
+  return barajar(indices.flatMap(i=>[{id:"c"+i,par:i,texto:pares[i].concepto},{id:"d"+i,par:i,texto:pares[i].definicion}]));
+}
+function JuegoMemoria({banco,grupo}:{banco:Banco;grupo:string}){
+  const pares=[...banco.parejas,...(parejasExtra[grupo]||[])];
+  const [indices,setIndices]=useState<number[]>(()=>escogerTres(pares.length));
+  const [cartas,setCartas]=useState<Tarjeta[]>(()=>prepararCartas(pares,indices));
   const [visibles,setVisibles]=useState<string[]>([]);
   const [resueltas,setResueltas]=useState<number[]>([]);
   const [intentos,setIntentos]=useState(0);
@@ -84,8 +105,13 @@ function JuegoMemoria({banco}:{banco:Banco}){
     if(primera&&primera.par===c.par){setResueltas(prev=>[...prev,c.par]);setVisibles([]);}
     else{setVisibles([visibles[0],c.id]);setBloqueado(true);tiempo.current=setTimeout(()=>{setVisibles([]);setBloqueado(false);},950);}
   }
-  function reiniciar(){if(tiempo.current)clearTimeout(tiempo.current);setCartas(barajar(banco.parejas.flatMap((p,i)=>[{id:"c"+i,par:i,texto:p.concepto},{id:"d"+i,par:i,texto:p.definicion}])));setVisibles([]);setResueltas([]);setIntentos(0);setBloqueado(false);}
-  return <div className="atlas-juego-cuerpo"><p className="atlas-juego-subtitulo">Memoria · {resueltas.length}/{banco.parejas.length} parejas · {intentos} intentos</p><p>Encontrá cada concepto y su definición.</p><div className="atlas-memoria-grid">{cartas.map(c=><button key={c.id} disabled={resueltas.includes(c.par)} className={resueltas.includes(c.par)?"resuelta":""} onClick={()=>elegir(c)}>{visibles.includes(c.id)||resueltas.includes(c.par)?c.texto:"?"}</button>)}</div>{resueltas.length===banco.parejas.length&&<p>¡Encontraste todas las parejas!</p>}<button className="atlas-enlace" onClick={reiniciar}><RotateCcw size={15}/> Mezclar otra vez</button></div>;
+  function reiniciar(){
+    if(tiempo.current)clearTimeout(tiempo.current);
+    const nuevos=escogerTres(pares.length,indices);
+    setIndices(nuevos);setCartas(prepararCartas(pares,nuevos));
+    setVisibles([]);setResueltas([]);setIntentos(0);setBloqueado(false);
+  }
+  return <div className="atlas-juego-cuerpo"><p className="atlas-juego-subtitulo">Memoria · {resueltas.length}/3 parejas · {intentos} intentos</p><p>Encontrá los conceptos y sus definiciones. Al mezclar cambian las parejas.</p><div className="atlas-memoria-grid">{cartas.map(c=><button key={c.id} disabled={resueltas.includes(c.par)} className={resueltas.includes(c.par)?"resuelta":""} onClick={()=>elegir(c)}>{visibles.includes(c.id)||resueltas.includes(c.par)?c.texto:"?"}</button>)}</div>{resueltas.length===3&&<p>¡Encontraste todas las parejas!</p>}<button className="atlas-enlace" onClick={reiniciar}><RotateCcw size={15}/> Mezclar con otras parejas</button></div>;
 }
 
 function Lienzo(){
@@ -111,7 +137,8 @@ function Lienzo(){
 
 export default function PausaAtlas({etapa,grado="",materia=""}:{etapa:Etapa;grado?:string;materia?:string}){
   const [juego,setJuego]=useState<"preguntas"|"memoria"|"dibujo">("preguntas");
-  const banco=contenidos[nivelDe(etapa,grado)];
+  const grupo=nivelDe(etapa,grado);
+  const banco=contenidos[grupo];
   return <section className="atlas-desafios-nuevos">
     <p className="atlas-juego-subtitulo">{materia?materia+" · ":""}{etapa==="primaria"?"Primaria":"Secundaria"}{grado?" · "+grado:""}</p>
     <h2>Elegí un desafío</h2>
@@ -121,6 +148,6 @@ export default function PausaAtlas({etapa,grado="",materia=""}:{etapa:Etapa;grad
       <button className={juego==="memoria"?"seleccionado":""} onClick={()=>setJuego("memoria")}><Puzzle size={19}/> Memoria</button>
       <button className={juego==="dibujo"?"seleccionado":""} onClick={()=>setJuego("dibujo")}><Paintbrush size={19}/> Dibujar</button>
     </div>
-    <div className="atlas-juego-panel" key={juego+"-"+etapa+"-"+grado}>{juego==="preguntas"?<JuegoPreguntas banco={banco}/>:juego==="memoria"?<JuegoMemoria banco={banco}/>:<Lienzo/>}</div>
+    <div className="atlas-juego-panel" key={juego+"-"+etapa+"-"+grado}>{juego==="preguntas"?<JuegoPreguntas banco={banco}/>:juego==="memoria"?<JuegoMemoria banco={banco} grupo={grupo}/>:<Lienzo/>}</div>
   </section>;
 }
