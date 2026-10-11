@@ -5,7 +5,7 @@ import "./atlas-inicio.css";
 
 type Rol = "docente" | "alumno";
 type Usuario = { id: number; nombre: string; rol: Rol };
-type Documento = { id: number; nombre: string; paginas: number };
+type Documento = { id: number; nombre: string; paginas: number; descargable?:number };
 type Aula = { id: number; nombre: string; materia: string; codigo?: string; documentos: Documento[] };
 type Resultado = { documento_id: number; nombre: string; pagina: number; texto: string };
 const API = "/atlas-api";
@@ -54,10 +54,17 @@ export default function AtlasAulas() {
   const [ocupado,setOcupado] = useState(false);
   const [accionEvaluacion,setAccionEvaluacion] = useState("");
   const [segundosEspera,setSegundosEspera] = useState(0);
+  const [segundosTutor,setSegundosTutor] = useState(0);
   const [etapa,setEtapa] = useState<"primaria"|"secundaria">("primaria");
   const [pausa,setPausa] = useState(false);
   const [vistaAlumno,setVistaAlumno] = useState<"inicio"|"clases"|"tutor"|"practicar"|"actividades"|"pausa">("inicio");
 
+  useEffect(()=>{
+    if(!ocupado || vistaAlumno!=="tutor" || usuario?.rol!=="alumno")return;
+    setSegundosTutor(0);
+    const reloj=window.setInterval(()=>setSegundosTutor(s=>s+1),1000);
+    return ()=>window.clearInterval(reloj);
+  },[ocupado,vistaAlumno,usuario?.rol]);
   useEffect(()=>{
     if(!accionEvaluacion.startsWith("Atlas está generando"))return;
     setSegundosEspera(0);
@@ -161,6 +168,22 @@ export default function AtlasAulas() {
     </section>
   </main></div>;
 
+  async function obtenerPdf(documento_id:number,nombre:string,pagina?:number,descargar=false){
+    const pestana=descargar?null:window.open("","_blank");
+    setEstado("");
+    try{
+      const datos=await llamar("/api/aulas/documento",{documento_id});
+      const binario=atob(datos.base64 as string);
+      const bytes=new Uint8Array(binario.length);
+      for(let i=0;i<binario.length;i++)bytes[i]=binario.charCodeAt(i);
+      const url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));
+      if(descargar){
+        const a=document.createElement("a");a.href=url;a.download=nombre;a.click();
+      }else if(pestana){pestana.location.href=url+(pagina?"#page="+pagina:"");}
+      else{window.open(url+(pagina?"#page="+pagina:""),"_blank");}
+      window.setTimeout(()=>URL.revokeObjectURL(url),120000);
+    }catch(e){pestana?.close();setEstado(e instanceof Error?e.message:"No se pudo abrir el PDF");}
+  }
   async function generarConIA(){
     if(!aula || !aula.documentos.length) throw new Error("Elegí una clase con PDF");
     const ids=documentosElegidos.length?documentosElegidos:aula.documentos.map(d=>d.id);
@@ -271,10 +294,10 @@ export default function AtlasAulas() {
       {vista==="tutor"&&usuario.rol==="alumno"&&<>
         <div className="atlas-v2-page-title"><small>ASISTENTE EDUCATIVO</small><h1><Sparkles size={30}/> Tutor Atlas</h1><p>Preguntá sobre uno, varios o todos los documentos publicados por tu docente.</p></div>
         {aulas.length>0&&elegirClase()}
-        <div className="atlas-v2-tutor-grid"><section className="atlas-v2-card"><h2><FolderOpen size={20}/> Materiales para consultar</h2>{selectorDocumentos()}<div className="atlas-v2-note">Los PDF originales no están disponibles para descarga todavía.</div></section>
+        <div className="atlas-v2-tutor-grid"><section className="atlas-v2-card"><h2><FolderOpen size={20}/> Materiales para consultar</h2>{selectorDocumentos()}<div className="atlas-v2-doc-actions">{aula?.documentos.map(d=><div key={d.id} className="atlas-v2-file-actions"><span>{d.nombre}</span>{d.descargable?<><button onClick={()=>void obtenerPdf(d.id,d.nombre)}>Abrir PDF</button><button onClick={()=>void obtenerPdf(d.id,d.nombre,undefined,true)}>Descargar</button></>:<small>Original no disponible: volver a subir el PDF</small>}</div>)}</div></section>
         <section className="atlas-v2-card atlas-v2-chat"><h2><Sparkles size={21}/> Preguntale a Atlas</h2><div className="atlas-v2-answer">{respuestaTutor?<><strong>Atlas responde</strong><p>{respuestaTutor}</p>{metricasTutor?.truncada&&<small>La respuesta puede estar incompleta.</small>}{typeof metricasTutor?.segundos_generacion==="number"&&<small>IA local · {metricasTutor.segundos_generacion} s · {metricasTutor.tokens_generados??0} tokens</small>}{modoTutor==="ollama_local"&&<small>Verificá la respuesta con sus fuentes.</small>}</>:<><div className="atlas-v2-answer-icon"><Sparkles size={24}/></div><strong>¡Hola! Soy Atlas ✨</strong><p>Podés preguntarme cualquier tema incluido en los materiales de tu clase.</p></>}</div>
-          {resultados.length>0&&<div className="atlas-v2-sources"><h3>Fuentes de la respuesta</h3>{resultados.map((r,i)=><article key={i}><button type="button" aria-expanded={fuentesAbiertas.includes(i)} onClick={()=>setFuentesAbiertas(prev=>prev.includes(i)?prev.filter(x=>x!==i):[...prev,i])}><FileText size={16}/><span>{r.nombre} · Pág. {r.pagina}</span>{fuentesAbiertas.includes(i)?<ChevronUp size={17}/>:<ChevronDown size={17}/>}</button>{fuentesAbiertas.includes(i)&&<p>{r.texto}</p>}</article>)}</div>}
-          <form className="atlas-v2-question" onSubmit={e=>void preguntar(e)}><input aria-label="Escribí tu pregunta" value={pregunta} onChange={e=>setPregunta(e.target.value)} placeholder="Escribí tu pregunta..." required/><button disabled={ocupado||!pregunta.trim()||!aula?.documentos.length}>{ocupado?"Pensando...":"Preguntar →"}</button></form></section></div>
+          {resultados.length>0&&<div className="atlas-v2-sources"><h3>Fuentes de la respuesta</h3>{resultados.map((r,i)=><article key={i}><button type="button" aria-expanded={fuentesAbiertas.includes(i)} onClick={()=>setFuentesAbiertas(prev=>prev.includes(i)?prev.filter(x=>x!==i):[...prev,i])}><FileText size={16}/><span>{r.nombre} · Pág. {r.pagina}</span>{fuentesAbiertas.includes(i)?<ChevronUp size={17}/>:<ChevronDown size={17}/>}</button>{fuentesAbiertas.includes(i)&&<div className="atlas-v2-source-expanded"><p>{r.texto}</p><button className="atlas-v2-link" onClick={()=>void obtenerPdf(r.documento_id,r.nombre,r.pagina)}>Abrir PDF en página {r.pagina}</button></div>}</article>)}</div>}
+          <form className="atlas-v2-question" onSubmit={e=>void preguntar(e)}><input aria-label="Escribí tu pregunta" value={pregunta} onChange={e=>setPregunta(e.target.value)} placeholder="Escribí tu pregunta..." required/><button disabled={ocupado||!pregunta.trim()||!aula?.documentos.length}>{ocupado?"Pensando...":"Preguntar →"}</button></form>{ocupado&&<div className="atlas-v2-info" role="status"><Clock3 size={18}/><span>Atlas está preparando la respuesta · {Math.floor(segundosTutor/60)}:{String(segundosTutor%60).padStart(2,"0")} transcurridos. Límite de espera aproximado: 2 minutos.</span></div>}</section></div>
       </>}
       {(vista==="practicar"&&usuario.rol==="alumno"||vista==="evaluaciones"&&usuario.rol==="docente")&&<>
         <div className="atlas-v2-page-title"><small>{usuario.rol==="alumno"?"APRENDÉ A TU RITMO":"ORGANIZACIÓN DOCENTE"}</small><h1><ClipboardList size={29}/>{usuario.rol==="alumno"?"Mis simulacros":"Crear evaluación"}</h1><p>{usuario.rol==="alumno"?"Elegí los documentos sobre los que querés practicar.":"Prepará una evaluación de un PDF, varios o todos; revisala antes de publicarla."}</p></div>
