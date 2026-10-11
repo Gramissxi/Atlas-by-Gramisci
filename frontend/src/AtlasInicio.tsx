@@ -19,7 +19,6 @@ export default function AtlasInicio() {
   const [pantalla, setPantalla] = useState<Pantalla>("inicio");
   const [materia, setMateria] = useState("mat");
   const [menuAbierto, setMenuAbierto] = useState(false);
-  const [texto, setTexto] = useState("");
   if (pantalla === "anterior") {
     return <div><button className="atlas-volver" onClick={() => setPantalla("inicio")}><ArrowLeft size={17}/> Volver al nuevo Atlas</button><AppAnterior /></div>;
   }
