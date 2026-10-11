@@ -377,7 +377,7 @@ class Handler(BaseHTTPRequestHandler):
                 if type(nota) not in (int,float) or not 0<=nota<=10:
                     raise ErrorUsuario("La nota debe ser numérica, entre 0 y 10")
                 comentario=datos.get("comentario","")
-                if not isinstance(comentario,str) or len(comentario)>1000:
+                if not isinstance(comentario,str) or len(comentario)>3000:
                     raise ErrorUsuario("Comentario demasiado largo")
                 with LOCK, conexion() as db:
                     e=db.execute("SELECT aula_id FROM evaluaciones WHERE id=?",(evaluacion_id,)).fetchone()
