@@ -6,7 +6,7 @@ import "./atlas-inicio.css";
 type Rol = "docente" | "alumno";
 type Usuario = { id: number; nombre: string; rol: Rol };
 type Documento = { id: number; nombre: string; paginas: number; descargable?:number };
-type Aula = { id: number; nombre: string; materia: string; codigo?: string; documentos: Documento[] };
+type Aula = { id: number; nombre: string; materia: string; codigo?: string; nivel?: "primaria"|"secundaria"|"sin_definir"; grado?:string; documentos: Documento[] };
 type Resultado = { documento_id: number; nombre: string; pagina: number; texto: string };
 const API = "/atlas-api";
 
@@ -39,6 +39,8 @@ export default function AtlasAulas() {
   const [respuestasAlumno,setRespuestasAlumno] = useState<string[]>([]);
   const [nombreAula,setNombreAula] = useState("");
   const [materia,setMateria] = useState("");
+  const [nivelClase,setNivelClase] = useState<"primaria"|"secundaria">("primaria");
+  const [gradoClase,setGradoClase] = useState("");
   const [codigo,setCodigo] = useState("");
   const [seleccion,setSeleccion] = useState<number|null>(null);
   const [archivo,setArchivo] = useState<File|null>(null);
@@ -56,7 +58,7 @@ export default function AtlasAulas() {
   const [accionEvaluacion,setAccionEvaluacion] = useState("");
   const [segundosEspera,setSegundosEspera] = useState(0);
   const [segundosTutor,setSegundosTutor] = useState(0);
-  const [etapa,setEtapa] = useState<"primaria"|"secundaria">("primaria");
+
   const [simulacro,setSimulacro] = useState<string[]>([]);
   const [respuestasSimulacro,setRespuestasSimulacro] = useState<string[]>([]);
   const [simulacroFinalizado,setSimulacroFinalizado] = useState(false);
@@ -328,7 +330,7 @@ export default function AtlasAulas() {
         <div className="atlas-v2-page-title"><small>{usuario.rol==="docente"?"ADMINISTRACIÓN":"MIS MATERIAS"}</small><h1>{usuario.rol==="docente"?"Mis clases":"Mis materias"}</h1><p>{usuario.rol==="docente"?"Creá clases y compartí su código de acceso.":"Unite con un código y explorá tus materias."}</p></div>
         <div className="atlas-v2-two">
           <section className="atlas-v2-card"><h2>{usuario.rol==="docente"?"Crear una clase":"Unirme a una clase"}</h2>
-            {usuario.rol==="docente"?<form onSubmit={e=>{e.preventDefault();void ejecutar(()=>llamar("/api/aulas/crear",{nombre:nombreAula,materia}),"Clase creada correctamente.");}}><label>Nombre del curso<input required value={nombreAula} onChange={e=>setNombreAula(e.target.value)} placeholder="Ej.: 6.º B"/></label><label>Materia<input required value={materia} onChange={e=>setMateria(e.target.value)} placeholder="Ej.: Matemática"/></label><button className="atlas-v2-primary" disabled={ocupado}>Crear clase</button></form>:<form onSubmit={e=>{e.preventDefault();void ejecutar(()=>llamar("/api/aulas/unirse",{codigo}),"Te uniste a la clase.");}}><label>Código de invitación<input required maxLength={20} value={codigo} onChange={e=>setCodigo(e.target.value.toUpperCase())} placeholder="A1B2C3D4"/></label><button className="atlas-v2-primary" disabled={ocupado}>Unirme</button></form>}
+            {usuario.rol==="docente"?<form onSubmit={e=>{e.preventDefault();void ejecutar(()=>llamar("/api/aulas/crear",{nombre:nombreAula,materia,nivel:nivelClase,grado:gradoClase}),"Clase creada correctamente.");}}><label>Nombre del curso<input required value={nombreAula} onChange={e=>setNombreAula(e.target.value)} placeholder="Ej.: 6.º B"/></label><label>Materia<input required value={materia} onChange={e=>setMateria(e.target.value)} placeholder="Ej.: Matemática"/></label><label>Nivel educativo<select value={nivelClase} onChange={e=>setNivelClase(e.target.value as "primaria"|"secundaria")}><option value="primaria">Primaria</option><option value="secundaria">Secundaria</option></select></label><label>Grado / Año<input required value={gradoClase} onChange={e=>setGradoClase(e.target.value)} placeholder="Ej.: 6.º grado"/></label><button className="atlas-v2-primary" disabled={ocupado}>Crear clase</button></form>:<form onSubmit={e=>{e.preventDefault();void ejecutar(()=>llamar("/api/aulas/unirse",{codigo}),"Te uniste a la clase.");}}><label>Código de invitación<input required maxLength={20} value={codigo} onChange={e=>setCodigo(e.target.value.toUpperCase())} placeholder="A1B2C3D4"/></label><button className="atlas-v2-primary" disabled={ocupado}>Unirme</button></form>}
           </section>
           <section className="atlas-v2-card"><h2>Clases disponibles</h2><div className="atlas-v2-classes">{aulas.map(a=><button key={a.id} onClick={()=>{seleccionarAula(a.id);navegar(usuario.rol==="docente"?"biblioteca":"tutor");}}><BookOpen size={20}/><span><strong>{a.materia}</strong><small>{a.nombre} · {a.documentos.length} PDF{usuario.rol==="docente"?" · Código "+a.codigo:""}</small></span><ArrowRight size={18}/></button>)}</div>{!aulas.length&&<p>Aún no tenés clases.</p>}</section>
         </div>
@@ -385,7 +387,7 @@ export default function AtlasAulas() {
         {!seguimiento.some(r=>r.aula_id===seleccion&&(filtroEvaluacion===null||r.evaluacion_id===filtroEvaluacion))&&<p>Sin asignaciones publicadas o estudiantes inscritos en esta selección.</p>}</section>
         {corregir&&<section ref={correccionRef} className="atlas-v2-card atlas-v2-eval-open"><h2>Corregir · {corregir.alumno}</h2>{corregir.preguntas.map((p,i)=><div key={i}><strong>{i+1}. {p}</strong><p>{corregir.respuestas[i]||"(Sin respuesta)"}</p></div>)}<label>Nota (0 a 10)<input type="number" min="0" max="10" step="0.5" value={nota} onChange={e=>setNota(e.target.value)}/></label><label>Comentario docente<textarea value={comentario} maxLength={3000} rows={5} onChange={e=>setComentario(e.target.value)}/></label><button className="atlas-v2-primary" disabled={ocupado||nota.trim()===""||!Number.isFinite(Number(nota))||Number(nota)<0||Number(nota)>10} onClick={()=>void ejecutar(async()=>{await llamar("/api/aulas/evaluaciones/corregir",{evaluacion_id:corregir.evaluacion_id,alumno_id:corregir.alumno_id,nota:Number(nota),comentario});setCorregir(null);},"Calificación registrada.")}>Guardar nota</button></section>}
       </>}
-      {vista==="pausa"&&usuario.rol==="alumno"&&<><div className="atlas-v2-page-title"><small>APRENDER JUGANDO</small><h1>Pausa y desafíos</h1><p>Juegos y actividades cortas para aprender a tu ritmo.</p></div><div className="atlas-v2-card"><div className="atlas-v2-options"><button className={etapa==="primaria"?"activo":""} onClick={()=>setEtapa("primaria")}>Primaria</button><button className={etapa==="secundaria"?"activo":""} onClick={()=>setEtapa("secundaria")}>Secundaria</button></div><PausaAtlas etapa={etapa}/></div></>}
+      {vista==="pausa"&&usuario.rol==="alumno"&&<><div className="atlas-v2-page-title"><small>APRENDER JUGANDO</small><h1>Pausa y desafíos</h1><p>Actividades adaptadas al nivel de la clase seleccionada.</p></div>{aulas.length>0&&elegirClase()}<div className="atlas-v2-card">{aula?.nivel==="primaria"||aula?.nivel==="secundaria"?<PausaAtlas etapa={aula.nivel}/>:<p>Tu docente tiene que configurar primero el nivel y grado/año de esta clase.</p>}</div></>}
       <footer className="atlas-v2-footer">Atlas · Prototipo local · No apto todavía para datos reales de menores · Sin sincronización offline</footer>
     </main>
   </div>;
