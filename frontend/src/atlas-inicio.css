@@ -171,3 +171,14 @@ button.atlas-v2-task:hover{background:#eaf7f2}
 .atlas-v2-feedback strong{display:block;font-size:21px}
 .atlas-v2-feedback p{font-size:14px!important;color:#365f55!important;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}
 .atlas-v2-eval-open textarea[readonly]{background:#f4f8f7;color:#405e60;cursor:default}
+
+/* Respiro horizontal en evaluación y devoluciones */
+.atlas-v2-eval-open{padding-left:clamp(22px,3vw,38px);padding-right:clamp(22px,3vw,38px)}
+.atlas-v2-eval-open>label{padding-left:6px;padding-right:6px}
+.atlas-v2-eval-open textarea{padding:15px 18px!important;line-height:1.6}
+.atlas-v2-feedback{padding:22px 26px}
+.atlas-v2-tracking{grid-template-columns:repeat(4,minmax(0,1fr))}
+.atlas-v2-eval-status{border-radius:99px;padding:7px 11px;font-size:12px;font-weight:700;white-space:nowrap}
+.atlas-v2-eval-status.corregida{background:#e5f5ed;color:#186c4b}
+.atlas-v2-eval-status.sin-corregir{background:#fff1d9;color:#956222}
+@media(max-width:650px){.atlas-v2-tracking{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-v2-feedback{padding:18px}.atlas-v2-eval-open{padding-left:19px;padding-right:19px}}
