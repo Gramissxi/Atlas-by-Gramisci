@@ -209,21 +209,29 @@ export default function AtlasAulas() {
   async function descargarEvaluacion(id:number){
     setOcupado(true);setEstado("");
     try{
-      const datos=await llamar("/api/aulas/evaluaciones/ver",{evaluacion_id:id});
-      const eva=datos.evaluacion as {titulo:string;preguntas:string[]};
-      const escapar=(v:string)=>v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-      const contenido='<!doctype html><html lang="es"><head><meta charset="utf-8"><title>'+escapar(eva.titulo)+'</title><style>body{font:16px Arial,sans-serif;max-width:800px;margin:40px auto;padding:0 24px;color:#193e40}h1{margin-bottom:30px}.pregunta{break-inside:avoid;margin:28px 0}.linea{height:55px;border-bottom:1px solid #bbc9c6}</style></head><body><h1>'+escapar(eva.titulo)+'</h1><p>Nombre y apellido: ______________________________</p>'+eva.preguntas.map((q,i)=>'<div class="pregunta"><strong>'+(i+1)+'. '+escapar(q)+'</strong><div class="linea"></div></div>').join('')+'</body></html>';
-      const url=URL.createObjectURL(new Blob([contenido],{type:"text/html;charset=utf-8"}));
-      const enlace=document.createElement("a");enlace.href=url;enlace.download="Atlas-"+eva.titulo.replace(/[^a-zA-Z0-9áéíóúñ_-]+/gi,"-")+".html";enlace.click();
+      const datos=await llamar("/api/aulas/evaluaciones/pdf",{evaluacion_id:id});
+      const binario=atob(datos.base64 as string);
+      const bytes=new Uint8Array(binario.length);
+      for(let i=0;i<binario.length;i++)bytes[i]=binario.charCodeAt(i);
+      const url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));
+      const a=document.createElement("a");a.href=url;a.download=String(datos.nombre||"Evaluacion-Atlas.pdf");a.click();
       window.setTimeout(()=>URL.revokeObjectURL(url),30000);
-    }catch(e){setEstado(e instanceof Error?e.message:"No se pudo descargar la evaluación")}
+    }catch(e){setEstado(e instanceof Error?e.message:"No se pudo descargar el PDF")}
     finally{setOcupado(false)}
+  }
+  async function eliminarDocumento(id:number,nombre:string){
+    if(!window.confirm("¿Eliminar el PDF '"+nombre+"' de esta clase y del tutor? Esta acción no se puede deshacer."))return;
+    await ejecutar(()=>llamar("/api/aulas/documento/eliminar",{documento_id:id}),"Documento eliminado de la clase.");
+  }
+  async function eliminarBorrador(id:number,titulo:string){
+    if(!window.confirm("¿Eliminar el borrador '"+titulo+"'? Esta acción no se puede deshacer."))return;
+    await ejecutar(()=>llamar("/api/aulas/evaluaciones/eliminar-borrador",{evaluacion_id:id}),"Borrador eliminado.");
   }
   async function abrirVistaDocente(id:number){
     setOcupado(true);setEstado("");
     try {
       const datos=await llamar("/api/aulas/evaluaciones/ver",{evaluacion_id:id});
-      setVistaPreviaDocente(datos.evaluacion);
+      setVistaPreviaDocente(datos.evaluacion);window.setTimeout(()=>document.querySelector(".atlas-v2-print-preview")?.scrollIntoView({behavior:"smooth",block:"start"}),100);
     }catch(e){setEstado(e instanceof Error?e.message:"No se pudo abrir la evaluación")}
     finally{setOcupado(false)}
   }
@@ -300,7 +308,7 @@ export default function AtlasAulas() {
         <div className="atlas-v2-page-title"><small>MATERIALES DEL CURSO</small><h1>Biblioteca</h1><p>Publicá PDF para que tus alumnos puedan consultarlos desde el tutor.</p></div>
         {aulas.length>0&&elegirClase()}
         <div className="atlas-v2-two">
-          <section className="atlas-v2-card"><h2>Documentos publicados</h2>{aula?.documentos.length?aula.documentos.map(d=><div className="atlas-v2-file" key={d.id}><FileText size={23}/><span><strong>{d.nombre}</strong><small>{d.paginas} páginas</small></span></div>):<p>Todavía no hay documentos en esta clase.</p>}</section>
+          <section className="atlas-v2-card"><h2>Documentos publicados</h2>{aula?.documentos.length?aula.documentos.map(d=><div className="atlas-v2-file" key={d.id}><FileText size={23}/><span><strong>{d.nombre}</strong><small>{d.paginas} páginas</small></span><button className="atlas-v2-link" disabled={ocupado} onClick={()=>void eliminarDocumento(d.id,d.nombre)}>Eliminar</button></div>):<p>Todavía no hay documentos en esta clase.</p>}</section>
           <section className="atlas-v2-card"><h2>Subir un PDF</h2><p>Solo los docentes pueden publicar documentos. Tamaño máximo: 10 MB.</p><input type="file" accept=".pdf,application/pdf" onChange={e=>setArchivo(e.target.files?.[0]||null)}/><button className="atlas-v2-primary" disabled={!archivo||ocupado||!aula} onClick={()=>void ejecutar(subir,"PDF publicado e indexado.")}><Upload size={17}/> Publicar documento</button><p className="atlas-v2-note">Los originales todavía no se almacenan para descarga; esta función está pendiente.</p></section>
         </div>
       </>}
@@ -315,7 +323,7 @@ export default function AtlasAulas() {
       {(vista==="practicar"&&usuario.rol==="alumno"||vista==="evaluaciones"&&usuario.rol==="docente")&&<>
         <div className="atlas-v2-page-title"><small>{usuario.rol==="alumno"?"APRENDÉ A TU RITMO":"ORGANIZACIÓN DOCENTE"}</small><h1><ClipboardList size={29}/>{usuario.rol==="alumno"?"Mis simulacros":"Crear evaluación"}</h1><p>{usuario.rol==="alumno"?"Elegí los documentos sobre los que querés practicar.":"Prepará una evaluación de un PDF, varios o todos; revisala antes de publicarla."}</p></div>
         {aulas.length>0&&elegirClase()}
-        <div className="atlas-v2-two"><div className="atlas-v2-eval-left"><section className="atlas-v2-card"><h2>Paso 1 · Elegí los materiales</h2>{selectorDocumentos()}</section>{vista==="evaluaciones"&&usuario.rol==="docente"&&<section className="atlas-v2-card atlas-v2-eval-list"><h2>Evaluaciones creadas</h2>{evaluaciones.length?evaluaciones.map(e=><div className="atlas-v2-task" key={e.id}><ClipboardList size={20}/><span><strong>{e.titulo}</strong><small>{e.materia} · {e.aula_nombre} · {e.estado==="publicada"?"Publicada":"Borrador"}</small></span><button className="atlas-v2-link" disabled={ocupado} onClick={()=>void abrirVistaDocente(e.id)}>Abrir</button><button className="atlas-v2-link" disabled={ocupado} onClick={()=>void descargarEvaluacion(e.id)}>Descargar</button>{e.estado==="borrador"&&<button className="atlas-v2-primary" disabled={ocupado} onClick={()=>void ejecutar(()=>llamar("/api/aulas/evaluaciones/publicar",{evaluacion_id:e.id}),"Evaluación publicada. Ya aparece en Mis actividades del alumnado.")}>Publicar</button>}</div>):<p>Todavía no creaste evaluaciones.</p>}</section>}</div>
+        <div className="atlas-v2-two"><div className="atlas-v2-eval-left"><section className="atlas-v2-card"><h2>Paso 1 · Elegí los materiales</h2>{selectorDocumentos()}</section>{vista==="evaluaciones"&&usuario.rol==="docente"&&<section className="atlas-v2-card atlas-v2-eval-list"><h2>Evaluaciones creadas</h2>{evaluaciones.length?evaluaciones.map(e=><div className="atlas-v2-task" key={e.id}><ClipboardList size={20}/><span><strong>{e.titulo}</strong><small>{e.materia} · {e.aula_nombre} · {e.estado==="publicada"?"Publicada":"Borrador"}</small></span><button className="atlas-v2-link" disabled={ocupado} onClick={()=>void abrirVistaDocente(e.id)}>Abrir</button><button className="atlas-v2-link" disabled={ocupado} onClick={()=>void descargarEvaluacion(e.id)}>Descargar PDF</button>{e.estado==="borrador"&&<button className="atlas-v2-primary" disabled={ocupado} onClick={()=>void ejecutar(()=>llamar("/api/aulas/evaluaciones/publicar",{evaluacion_id:e.id}),"Evaluación publicada. Ya aparece en Mis actividades del alumnado.")}>Publicar</button>}{e.estado==="borrador"&&<button className="atlas-v2-link" disabled={ocupado} onClick={()=>void eliminarBorrador(e.id,e.titulo)}>Eliminar borrador</button>}</div>):<p>Todavía no creaste evaluaciones.</p>}</section>}</div>
         <section className="atlas-v2-card"><h2>Paso 2 · Configurá la actividad</h2><label>Cantidad de preguntas<select value={cantidadGeneracion} onChange={e=>{const n=Number(e.target.value);setCantidadGeneracion(n);setPreguntasEvaluacion(prev=>Array.from({length:n},(_,i)=>prev[i]??""));}}><option value={5}>5 preguntas</option><option value={10}>10 preguntas</option><option value={15}>15 preguntas</option></select></label><label>Dificultad<select value={dificultadGeneracion} onChange={e=>setDificultadGeneracion(e.target.value)}><option value="basica">Básica</option><option value="media">Intermedia</option><option value="avanzada">Avanzada</option></select></label><label>Formato<select value={formatoGeneracion} onChange={e=>setFormatoGeneracion(e.target.value)}><option value="mixto">Mixto</option><option value="multiple">Opción múltiple</option><option value="desarrollo">Desarrollo</option></select></label><div className="atlas-v2-info"><Clock3 size={19}/><span>{usuario.rol==="alumno"?"Los simulacros personales tendrán corrección y explicaciones.":"Los borradores requerirán revisión docente antes de publicarse."}</span></div>{usuario.rol==="docente"?<div className="atlas-v2-eval-editor"><h3>Paso 3 · Revisá las preguntas</h3><button className="atlas-v2-primary" disabled={ocupado||!aula?.documentos.length} onClick={()=>{setAccionEvaluacion("Atlas está generando preguntas con Ollama. Puede tardar unos minutos.");void ejecutar(generarConIA,"Atlas propuso preguntas. Revisalas y editalas antes de guardar.").finally(()=>setAccionEvaluacion(""));}}><Sparkles size={17}/> Generar borrador con IA</button><label>Título de la evaluación<input value={tituloEvaluacion} maxLength={120} onChange={e=>setTituloEvaluacion(e.target.value)} placeholder="Ej.: Evaluación de Teoría de la Información"/></label>{preguntasEvaluacion.map((q,i)=><label key={i}>Pregunta {i+1}<textarea rows={2} value={q} onChange={e=>setPreguntasEvaluacion(prev=>prev.map((v,j)=>j===i?e.target.value:v))} placeholder="Escribí el enunciado que verá el alumno"/></label>)}<button className="atlas-v2-link" disabled={preguntasEvaluacion.length>=30} onClick={()=>setPreguntasEvaluacion(prev=>[...prev,""])}>+ Agregar pregunta</button><button className="atlas-v2-primary" disabled={!tituloEvaluacion.trim()||!aula?.documentos.length||ocupado||preguntasEvaluacion.some(x=>x.trim().length<8)} onClick={()=>{setAccionEvaluacion("Guardando borrador…");void ejecutar(crearBorrador,"Borrador guardado. Revisalo abajo antes de publicar.").finally(()=>setAccionEvaluacion(""));}}>Guardar borrador</button>{accionEvaluacion&&<div className="atlas-v2-info" role="status"><Clock3 size={19}/><span>{accionEvaluacion}{accionEvaluacion.startsWith("Atlas está generando")&&<><strong> Tiempo transcurrido: {Math.floor(segundosEspera/60)}:{String(segundosEspera%60).padStart(2,"0")}</strong> · El tiempo es orientativo, no hay cuenta regresiva garantizada (límite de espera: 3 minutos).</>}</span></div>}{estado&&<div className="atlas-v2-alert" role="alert">{estado}</div>}<p className="atlas-v2-note">Las preguntas propuestas por IA son borradores. Revisalas y editalas antes de guardar y publicar.</p></div>:<p className="atlas-v2-note">Los simulacros personales generativos se incorporarán en otra etapa.</p>}</section></div>
       </>}
       {vista==="actividades"&&usuario.rol==="alumno"&&<>
