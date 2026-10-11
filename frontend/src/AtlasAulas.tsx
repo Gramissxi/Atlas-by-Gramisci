@@ -27,6 +27,8 @@ export default function AtlasAulas() {
   const [archivo,setArchivo] = useState<File|null>(null);
   const [pregunta,setPregunta] = useState("");
   const [resultados,setResultados] = useState<Resultado[]>([]);
+  const [respuestaTutor,setRespuestaTutor] = useState("");
+  const [modoTutor,setModoTutor] = useState("");
   const [estado,setEstado] = useState("");
   const [ocupado,setOcupado] = useState(false);
   const [etapa,setEtapa] = useState<"primaria"|"secundaria">("primaria");
@@ -82,15 +84,15 @@ export default function AtlasAulas() {
   async function preguntar(e:FormEvent){
     e.preventDefault();
     if(seleccion===null)return;
-    setOcupado(true);setEstado("");setResultados([]);
-    try{const respuesta=await llamar("/api/aulas/consultar",{aula_id:seleccion,pregunta});setResultados(respuesta.resultados);
+    setOcupado(true);setEstado("");setResultados([]);setRespuestaTutor("");setModoTutor("");
+    try{const respuesta=await llamar("/api/aulas/consultar",{aula_id:seleccion,pregunta});setResultados(respuesta.resultados);setRespuestaTutor(respuesta.respuesta || "");setModoTutor(respuesta.modo || "");
       if(!respuesta.resultados.length)setEstado(respuesta.detalle || "No encontré coincidencias. Probá con un término del documento.");
     }catch(e){setEstado(e instanceof Error?e.message:"Error al consultar")}
     finally{setOcupado(false)}
   }
   async function salir() {
     try{await llamar("/api/aulas/salir",{});}catch{/* Cierre local aunque el servidor ya esté desconectado */}
-    setUsuario(null);setToken("");setAulas([]);setResultados([]);setSeleccion(null);
+    setUsuario(null);setToken("");setAulas([]);setResultados([]);setRespuestaTutor("");setSeleccion(null);
   }
 
   const aula=aulas.find(a=>a.id===seleccion);
@@ -176,7 +178,13 @@ export default function AtlasAulas() {
               <input id="pregunta-aula" value={pregunta} onChange={e=>setPregunta(e.target.value)} required placeholder="¿Qué significa este concepto?"/>
               <button disabled={!pregunta.trim()||ocupado||!aula.documentos.length} type="submit">Consultar</button>
             </div></form>
-            {resultados.length>0&&<div aria-live="polite"><h3>Fragmentos encontrados</h3>{resultados.map((r,i)=><article className="atlas-aviso" style={{marginTop:12}} key={i}><strong>{r.nombre} · página {r.pagina}</strong><p>{r.texto}</p></article>)}</div>}
+            {ocupado&&<p role="status">Atlas está consultando el material y preparando la respuesta…</p>}
+            {respuestaTutor&&<div className="atlas-aviso" aria-live="polite" style={{marginTop:16}}>
+              <h3>{modoTutor==="ollama_local"?"Respuesta de Atlas · IA local":"Consulta documental"}</h3>
+              <p style={{whiteSpace:"pre-wrap"}}>{respuestaTutor}</p>
+              {modoTutor==="ollama_local"&&<small>Respuesta automática: comprobá las referencias con el documento original.</small>}
+            </div>}
+            {resultados.length>0&&<div aria-live="polite"><h3>Fuentes encontradas</h3>{resultados.map((r,i)=><article className="atlas-aviso" style={{marginTop:12}} key={i}><strong>{r.nombre} · página {r.pagina}</strong><p>{r.texto}</p></article>)}</div>}
           </>}
         </div>}
         {usuario.rol==="alumno"&&vistaAlumno==="pausa"&&<div className="atlas-caja" style={{marginTop:18}}>
