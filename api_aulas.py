@@ -380,6 +380,37 @@ class Handler(BaseHTTPRequestHandler):
                     archivo=db.execute("SELECT contenido FROM documentos_archivos WHERE documento_id=?",(documento_id,)).fetchone()
                     if not archivo:raise ErrorUsuario("El PDF original no está guardado. Pedile al docente que lo vuelva a subir.",404)
                     return self.responder({"nombre":doc["nombre"],"base64":base64.b64encode(archivo["contenido"]).decode("ascii")})
+            if ruta == "/api/aulas/practicar/revisar":
+                if user["rol"]!="alumno":raise ErrorUsuario("Solo alumnos pueden revisar simulacros",403)
+                aula_id=int(datos.get("aula_id",0))
+                ids=datos.get("documentos_ids")
+                preguntas=datos.get("preguntas")
+                respuestas=datos.get("respuestas")
+                if not isinstance(ids,list) or not ids or any(type(i) is not int for i in ids):
+                    raise ErrorUsuario("Materiales inválidos")
+                if not isinstance(preguntas,list) or not isinstance(respuestas,list) or not 1<=len(preguntas)<=15 or len(preguntas)!=len(respuestas) or any(not isinstance(x,str) or len(x)>1000 for x in preguntas+respuestas):
+                    raise ErrorUsuario("Simulacro inválido")
+                with conexion() as db:
+                    permiso_aula(db,user,aula_id)
+                    disponibles={r[0] for r in db.execute("SELECT id FROM documentos WHERE aula_id=?",(aula_id,))}
+                    if not set(ids).issubset(disponibles):raise ErrorUsuario("Material fuera de clase",403)
+                    from services.recuperacion_aulas import recuperar
+                    fuentes=recuperar(db,aula_id,"definiciones conceptos ejercicios formulas contenidos",limite=8,documentos_ids=ids)
+                if not fuentes:raise ErrorUsuario("No se encontró material para revisar")
+                import urllib.request
+                contexto="\\n".join(f["texto"][:800] for f in fuentes)
+                pares="\\n".join(f"{i+1}. P: {p}\\nAlumno: {r}" for i,(p,r) in enumerate(zip(preguntas,respuestas)))
+                solicitud={"model":os.getenv("ATLAS_MODELO_CHAT","llama3.2:3b"),"stream":False,
+                    "options":{"temperature":0.1,"num_predict":650},
+                    "messages":[{"role":"system","content":"Sos un tutor educativo. Compará respuestas con material de clase. No inventes ni afirmes certeza donde el texto no alcanza. Explicá brevemente qué repasar para cada respuesta. La devolución es orientativa, no una calificación oficial."},
+                                {"role":"user","content":"FUENTES:\\n"+contexto+"\\nPREGUNTAS Y RESPUESTAS:\\n"+pares}]}
+                req=urllib.request.Request(os.getenv("ATLAS_OLLAMA_URL","http://127.0.0.1:11434/api/chat"),json.dumps(solicitud).encode(),{"Content-Type":"application/json"})
+                try:
+                    with urllib.request.urlopen(req,timeout=120) as out:resultado=json.load(out)
+                    devolucion=resultado.get("message",{}).get("content","").strip()
+                except Exception:raise ErrorUsuario("No fue posible generar la devolución con Ollama",503)
+                if not devolucion:raise ErrorUsuario("Ollama no devolvió una corrección",503)
+                return self.responder({"devolucion":devolucion})
             if ruta == "/api/aulas/practicar/generar":
                 if user["rol"]!="alumno":raise ErrorUsuario("Solo alumnos pueden crear simulacros personales",403)
                 aula_id=int(datos.get("aula_id",0))
