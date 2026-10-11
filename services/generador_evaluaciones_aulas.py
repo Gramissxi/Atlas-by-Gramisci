@@ -7,7 +7,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
-def generar_preguntas(fragmentos, cantidad, dificultad, formato, modelo=None):
+def generar_preguntas(fragmentos, cantidad, dificultad, formato, modelo=None, excluir=None):
     if not fragmentos:
         raise ValueError("No hay fragmentos útiles para generar preguntas")
     if formato=="mixto":
@@ -36,6 +36,8 @@ def generar_preguntas(fragmentos, cantidad, dificultad, formato, modelo=None):
         "Para desarrollo, devolvé únicamente el enunciado. No incluyas respuestas en el borrador."
     )
     pedido = f"Generá exactamente {cantidad} preguntas, dificultad {dificultad}, formato {formato}.\nFUENTES:\n{fuentes}"
+    if excluir:
+        pedido += "\nPREGUNTAS PROHIBIDAS: No repitas ni reformules estas preguntas ya usadas:\n" + "\n".join("- "+p[:230] for p in excluir[-20:])
     item={"type":"object","properties":{"enunciado":{"type":"string"}},"required":["enunciado"]}
     if es_mixto:
         sistema += (" Para formato mixto, cada elemento del JSON debe tener 'tipo' "
