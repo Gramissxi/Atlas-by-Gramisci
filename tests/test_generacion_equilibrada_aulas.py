@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch
 from services.generacion_equilibrada_aulas import generar_equilibrado, clave_pregunta
+from services.generador_evaluaciones_aulas import generar_preguntas
 
 
 class FakeDB:
@@ -63,6 +64,19 @@ class TestGeneracionEquilibrada(unittest.TestCase):
             preguntas,_=generar_equilibrado(FakeDB(),1,[11,22],2,"media","desarrollo")
         self.assertEqual(preguntas,["¿Qué es la entropía?","¿Qué es una señal?"])
         self.assertEqual(len(llamadas),3)
+
+    def test_lote_invalido_se_divide_en_generaciones_unitarias(self):
+        llamadas=[]
+        def simulacion(fragmentos,cantidad,dificultad,formato,modelo=None,excluir=None):
+            llamadas.append(cantidad)
+            if cantidad>1:
+                raise ValueError("La IA devolvió una pregunta en vez de dos")
+            return ["¿Qué es una señal?" if excluir else "¿Qué es la entropía?"]
+        with patch("services.generador_evaluaciones_aulas._generar_lote",side_effect=simulacion):
+            preguntas=generar_preguntas([{"nombre":"Doc","pagina":1,"texto":"Texto"}],2,"media","desarrollo")
+        self.assertEqual(llamadas,[2,1,1])
+        self.assertEqual(len(preguntas),2)
+        self.assertNotEqual(preguntas[0],preguntas[1])
 
     def test_mas_documentos_que_preguntas(self):
         with self.assertRaises(ValueError):
