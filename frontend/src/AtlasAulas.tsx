@@ -127,33 +127,33 @@ export default function AtlasAulas() {
     </aside>
     <main className="atlas-contenido">
       <div className="atlas-cabecera"><span className="atlas-etiqueta"><GraduationCap size={16}/> Espacio {usuario.rol}</span><button className="atlas-enlace" onClick={()=>void salir()}>Salir</button></div>
-      <section className="atlas-pagina">
-        <h1>{usuario.rol==="docente"?"Panel docente":"Mis clases"}</h1>
-        <p>{usuario.rol==="docente"?"Creá clases, compartí el código e incorporá documentos. Solo tu cuenta puede publicar materiales en tus clases.":"Ingresá el código que te dio tu docente y consultá los materiales de tu clase."}</p>
-        {usuario.rol==="docente" ? <form className="atlas-caja" onSubmit={e=>{e.preventDefault();void ejecutar(()=>llamar("/api/aulas/crear",{nombre:nombreAula,materia}),"Clase creada. Compartí su código con tus estudiantes.");}}>
+      <section className="atlas-pagina atlas-aulas-dashboard">
+        <div className="atlas-aulas-hero"><span className="atlas-sobrelinea">{usuario.rol==="docente"?"Tu espacio de enseñanza":"Tu espacio para aprender"}</span><h1>{usuario.rol==="docente"?"Panel docente":"Mis clases"}</h1>
+        <p>{usuario.rol==="docente"?"Creá clases, compartí el código e incorporá documentos. Solo tu cuenta puede publicar materiales en tus clases.":"Ingresá el código que te dio tu docente y consultá los materiales de tu clase."}</p></div>
+        {usuario.rol==="docente" ? <form className="atlas-caja atlas-formulario atlas-aulas-card" onSubmit={e=>{e.preventDefault();void ejecutar(()=>llamar("/api/aulas/crear",{nombre:nombreAula,materia}),"Clase creada. Compartí su código con tus estudiantes.");}}>
           <h2>Crear clase</h2><label htmlFor="n-aula">Nombre del curso</label><input id="n-aula" required value={nombreAula} onChange={e=>setNombreAula(e.target.value)} placeholder="Ej.: 5.º A"/>
           <label htmlFor="m-aula">Materia</label><input id="m-aula" required value={materia} onChange={e=>setMateria(e.target.value)} placeholder="Ej.: Ciencias Naturales"/>
           <button className="atlas-boton" disabled={ocupado} type="submit">Crear clase y código</button>
-        </form> : <form className="atlas-caja" onSubmit={e=>{e.preventDefault();void ejecutar(()=>llamar("/api/aulas/unirse",{codigo}),"Ya te incorporaste a la clase.");}}>
+        </form> : <form className="atlas-caja atlas-formulario atlas-aulas-card" onSubmit={e=>{e.preventDefault();void ejecutar(()=>llamar("/api/aulas/unirse",{codigo}),"Ya te incorporaste a la clase.");}}>
           <h2><Users size={20}/> Unirme a una clase</h2><label htmlFor="codigo-clase">Código de clase</label>
           <input id="codigo-clase" value={codigo} onChange={e=>setCodigo(e.target.value.toUpperCase())} maxLength={20} required placeholder="Ej.: A1B2C3D4"/>
           <button className="atlas-boton" disabled={ocupado} type="submit">Unirme</button>
         </form>}
         <p role="status">{estado}</p>
-        <div className="atlas-caja" style={{marginTop:20}}>
+        <div className="atlas-caja atlas-aulas-card" style={{marginTop:20}}>
           <h2>{usuario.rol==="docente"?"Clases que administrás":"Clases a las que pertenecés"}</h2>
           {!aulas.length?<p>Todavía no hay clases.</p>:<div className="atlas-selector-materias">{aulas.map(a=><button key={a.id} className={seleccion===a.id?"elegida":""} onClick={()=>{setSeleccion(a.id);setResultados([]);setEstado("");}}>{a.nombre} · {a.materia}</button>)}</div>}
         </div>
-        {aula&&<div className="atlas-caja" style={{marginTop:18}}>
+        {aula&&<div className="atlas-caja atlas-aulas-card" style={{marginTop:18}}>
           <h2>{aula.nombre} · {aula.materia}</h2>
           {usuario.rol==="docente"&&<p><strong>Código de invitación:</strong> <code>{aula.codigo}</code></p>}
-          <h3>Material de la clase</h3>
+          <h3><BookOpen size={18} style={{display:"inline",verticalAlign:"middle"}}/> Material de la clase</h3>
           {!aula.documentos.length?<p>Todavía no hay documentos publicados.</p>:<ul>{aula.documentos.map(d=><li key={d.id}>{d.nombre} · {d.paginas} páginas</li>)}</ul>}
           {usuario.rol==="docente"&&<div style={{marginTop:18}}>
             <h3><Upload size={18}/> Subir PDF para esta clase</h3><input type="file" accept=".pdf,application/pdf" onChange={e=>setArchivo(e.target.files?.[0]||null)}/>
             <button className="atlas-boton" disabled={!archivo||ocupado} onClick={()=>void ejecutar(subir,"PDF indexado y disponible para esta clase.")}>Publicar documento</button>
           </div>}
-          {usuario.rol==="alumno"&&<><h3>Preguntale a Atlas</h3>
+          {usuario.rol==="alumno"&&<><h3><span aria-hidden="true">✦ </span>Tu tutor Atlas</h3>
             <form onSubmit={e=>void preguntar(e)}><label htmlFor="pregunta-aula">Tu pregunta</label><div className="atlas-pregunta">
               <input id="pregunta-aula" value={pregunta} onChange={e=>setPregunta(e.target.value)} required placeholder="¿Qué significa este concepto?"/>
               <button disabled={!pregunta.trim()||ocupado||!aula.documentos.length} type="submit">Consultar</button>
