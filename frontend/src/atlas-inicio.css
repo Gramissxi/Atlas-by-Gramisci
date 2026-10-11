@@ -138,3 +138,18 @@
 @media(max-width:650px){.atlas-v2{display:block}.atlas-v2-main{padding:19px 15px}.atlas-v2-mobile-header{display:flex;align-items:center;justify-content:space-between;background:white;padding:13px 16px;border-bottom:1px solid #e5ede9;gap:10px}.atlas-v2-mobile-header button,.atlas-v2-close{border:0;background:transparent;color:#286d68}.atlas-v2-mobile-header strong{color:#187768;font-size:20px}.atlas-v2-mobile-header span{font-size:11px;color:#829a98}.atlas-v2-sidebar{position:fixed;top:0;bottom:0;left:0;height:100vh;transform:translateX(-110%);transition:transform .2s;box-shadow:10px 0 24px #173a3220}.atlas-v2-sidebar-open{transform:translateX(0)}.atlas-v2-close{display:block;margin-left:auto}.atlas-v2-scrim{display:block;position:fixed;inset:0;background:#18383377;border:0;z-index:12}.atlas-v2-hero{padding:26px 22px;min-height:170px}.atlas-v2-hero-art{display:none}.atlas-v2-actions{gap:10px}.atlas-v2-action{padding:15px;min-height:153px}.atlas-v2-top{margin-bottom:20px}.atlas-v2-card{padding:19px}.atlas-v2-question{flex-direction:column!important}.atlas-v2-question button{padding:12px}.atlas-v2-course-select{flex-direction:column;align-items:stretch}}
 @media(max-width:390px){.atlas-v2-actions,.atlas-v2-courses{grid-template-columns:1fr}.atlas-v2-action{min-height:130px}}
 @media(prefers-reduced-motion:reduce){.atlas-v2-action,.atlas-v2-course,.atlas-v2-sidebar{transition:none}}
+
+/* Evaluaciones publicadas y tareas pendientes */
+.atlas-v2-pendientes{margin-top:27px}
+.atlas-v2-task{display:flex;align-items:center;gap:13px;border:1px solid #dae9e4;border-radius:12px;background:#fcfefd;padding:15px;width:100%;text-align:left;margin:8px 0;color:#368b7c}
+button.atlas-v2-task:hover{background:#eaf7f2}
+.atlas-v2-task>span{flex:1;min-width:0}.atlas-v2-task strong,.atlas-v2-task small{display:block;overflow-wrap:anywhere}
+.atlas-v2-task strong{font-size:13px;color:#25474a}.atlas-v2-task small{font-size:11px;color:#7b9395;margin-top:5px}
+.atlas-v2-eval-list{margin-top:20px}
+.atlas-v2-eval-editor{margin-top:20px;padding-top:17px;border-top:1px solid #e5eeea;display:flex;flex-direction:column;gap:12px}
+.atlas-v2-eval-editor textarea,.atlas-v2-eval-open textarea{width:100%;display:block;border:1px solid #d2e2df;background:white;border-radius:10px;padding:12px;resize:vertical;min-height:70px;color:#29464a}
+.atlas-v2-eval-editor .atlas-v2-link{align-self:flex-start}
+.atlas-v2-eval-open{margin-top:20px}
+.atlas-v2-eval-open label{display:block!important;margin:15px 0!important;font-weight:650!important}
+.atlas-v2-eval-open textarea{margin-top:8px}
+@media(max-width:650px){.atlas-v2-task{flex-wrap:wrap}.atlas-v2-task .atlas-v2-primary{width:100%}}
