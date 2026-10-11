@@ -57,6 +57,14 @@ def conexion():
     );
     CREATE TABLE IF NOT EXISTS evaluaciones (id INTEGER PRIMARY KEY, aula_id INTEGER NOT NULL REFERENCES aulas(id), titulo TEXT NOT NULL, documentos_ids TEXT NOT NULL, preguntas TEXT NOT NULL, estado TEXT NOT NULL DEFAULT 'borrador' CHECK(estado IN ('borrador','publicada')), creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, publicado_en TEXT);
     CREATE TABLE IF NOT EXISTS entregas_evaluacion (evaluacion_id INTEGER NOT NULL REFERENCES evaluaciones(id), alumno_id INTEGER NOT NULL REFERENCES usuarios(id), respuestas TEXT NOT NULL, entregado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(evaluacion_id,alumno_id));
+    CREATE TABLE IF NOT EXISTS calificaciones (
+      evaluacion_id INTEGER NOT NULL REFERENCES evaluaciones(id),
+      alumno_id INTEGER NOT NULL REFERENCES usuarios(id),
+      nota REAL NOT NULL CHECK(nota >= 0 AND nota <= 10),
+      comentario TEXT NOT NULL DEFAULT '',
+      corregido_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY(evaluacion_id,alumno_id)
+    );
     CREATE VIRTUAL TABLE IF NOT EXISTS fragmentos USING fts5(
         documento_id UNINDEXED, aula_id UNINDEXED, pagina UNINDEXED, texto,
         tokenize='unicode61 remove_diacritics 2'
@@ -172,6 +180,20 @@ class Handler(BaseHTTPRequestHandler):
                     else:
                         filas=db.execute("""SELECT e.id,e.aula_id,e.titulo,e.estado,e.creado_en,e.publicado_en,a.nombre AS aula_nombre,a.materia,CASE WHEN t.evaluacion_id IS NULL THEN 0 ELSE 1 END AS entregada FROM evaluaciones e JOIN aulas a ON a.id=e.aula_id JOIN inscripciones i ON i.aula_id=a.id AND i.alumno_id=? LEFT JOIN entregas_evaluacion t ON t.evaluacion_id=e.id AND t.alumno_id=? WHERE e.estado='publicada' ORDER BY e.id DESC""",(user["id"],user["id"])).fetchall()
                 return self.responder({"evaluaciones":[dict(x) for x in filas]})
+            if self.path == "/api/aulas/seguimiento":
+                if user["rol"]!="docente":raise ErrorUsuario("Solo docentes",403)
+                with conexion() as db:
+                    registros=db.execute("""SELECT e.id AS evaluacion_id,e.titulo,e.aula_id,a.nombre AS aula_nombre,a.materia,
+                      u.id AS alumno_id,u.nombre AS alumno,
+                      t.entregado_en,c.nota,c.comentario,c.corregido_en
+                      FROM evaluaciones e JOIN aulas a ON a.id=e.aula_id
+                      JOIN inscripciones i ON i.aula_id=e.aula_id
+                      JOIN usuarios u ON u.id=i.alumno_id
+                      LEFT JOIN entregas_evaluacion t ON t.evaluacion_id=e.id AND t.alumno_id=u.id
+                      LEFT JOIN calificaciones c ON c.evaluacion_id=e.id AND c.alumno_id=u.id
+                      WHERE a.docente_id=? AND e.estado='publicada'
+                      ORDER BY a.nombre,e.id,u.nombre""",(user["id"],)).fetchall()
+                return self.responder({"seguimiento":[dict(x) for x in registros]})
             raise ErrorUsuario("Ruta inexistente",404)
         except ErrorUsuario as e:
             self.responder({"error":str(e)}, e.estado)
@@ -308,6 +330,39 @@ class Handler(BaseHTTPRequestHandler):
                     permiso_aula(db,user,e["aula_id"])
                     if user["rol"]=="alumno" and e["estado"]!="publicada":raise ErrorUsuario("No publicada",403)
                     return self.responder({"evaluacion":{"id":e["id"],"titulo":e["titulo"],"preguntas":json.loads(e["preguntas"]),"estado":e["estado"]}})
+            if ruta == "/api/aulas/evaluaciones/corregir":
+                if user["rol"]!="docente":raise ErrorUsuario("Solo docentes",403)
+                evaluacion_id=int(datos.get("evaluacion_id",0))
+                alumno_id=int(datos.get("alumno_id",0))
+                nota=datos.get("nota")
+                if type(nota) not in (int,float) or not 0<=nota<=10:
+                    raise ErrorUsuario("La nota debe ser numérica, entre 0 y 10")
+                comentario=datos.get("comentario","")
+                if not isinstance(comentario,str) or len(comentario)>1000:
+                    raise ErrorUsuario("Comentario demasiado largo")
+                with LOCK, conexion() as db:
+                    e=db.execute("SELECT aula_id FROM evaluaciones WHERE id=?",(evaluacion_id,)).fetchone()
+                    if not e:raise ErrorUsuario("Evaluación inexistente",404)
+                    permiso_aula(db,user,e["aula_id"],docente=True)
+                    entrega=db.execute("SELECT 1 FROM entregas_evaluacion WHERE evaluacion_id=? AND alumno_id=?",(evaluacion_id,alumno_id)).fetchone()
+                    if not entrega:raise ErrorUsuario("El alumno no entregó esta evaluación",409)
+                    db.execute("""INSERT INTO calificaciones(evaluacion_id,alumno_id,nota,comentario)
+                    VALUES (?,?,?,?)
+                    ON CONFLICT(evaluacion_id,alumno_id) DO UPDATE SET
+                    nota=excluded.nota,comentario=excluded.comentario,corregido_en=CURRENT_TIMESTAMP""",
+                    (evaluacion_id,alumno_id,nota,comentario.strip()))
+                return self.responder({"ok":True})
+            if ruta == "/api/aulas/evaluaciones/respuestas":
+                if user["rol"]!="docente":raise ErrorUsuario("Solo docentes",403)
+                evaluacion_id=int(datos.get("evaluacion_id",0))
+                alumno_id=int(datos.get("alumno_id",0))
+                with conexion() as db:
+                    e=db.execute("SELECT aula_id,preguntas FROM evaluaciones WHERE id=?",(evaluacion_id,)).fetchone()
+                    if not e:raise ErrorUsuario("Evaluación inexistente",404)
+                    permiso_aula(db,user,e["aula_id"],docente=True)
+                    entrega=db.execute("SELECT respuestas FROM entregas_evaluacion WHERE evaluacion_id=? AND alumno_id=?",(evaluacion_id,alumno_id)).fetchone()
+                    if not entrega:raise ErrorUsuario("Entrega inexistente",404)
+                return self.responder({"preguntas":json.loads(e["preguntas"]),"respuestas":json.loads(entrega["respuestas"])})
             if ruta == "/api/aulas/evaluaciones/entregar":
                 if user["rol"]!="alumno":raise ErrorUsuario("Solo estudiantes pueden entregar",403)
                 evaluacion_id=int(datos.get("evaluacion_id",0))
