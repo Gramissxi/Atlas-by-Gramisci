@@ -31,6 +31,7 @@ export default function AtlasAulas() {
   const [ocupado,setOcupado] = useState(false);
   const [etapa,setEtapa] = useState<"primaria"|"secundaria">("primaria");
   const [pausa,setPausa] = useState(false);
+  const [vistaAlumno,setVistaAlumno] = useState<"inicio"|"clases"|"tutor"|"pausa">("inicio");
 
   async function llamar(path:string, body?:object, autenticacion=token) {
     const respuesta = await fetch(API+path,{
@@ -83,7 +84,7 @@ export default function AtlasAulas() {
     if(seleccion===null)return;
     setOcupado(true);setEstado("");setResultados([]);
     try{const respuesta=await llamar("/api/aulas/consultar",{aula_id:seleccion,pregunta});setResultados(respuesta.resultados);
-      if(!respuesta.resultados.length)setEstado("No encontré fragmentos con esas palabras en el material de esta clase.");
+      if(!respuesta.resultados.length)setEstado(respuesta.detalle || "No encontré coincidencias. Probá con un término del documento.");
     }catch(e){setEstado(e instanceof Error?e.message:"Error al consultar")}
     finally{setOcupado(false)}
   }
@@ -122,15 +123,32 @@ export default function AtlasAulas() {
     <header className="atlas-barra-movil"><strong>✦ Atlas</strong></header>
     <aside className="atlas-lateral">
       <div className="atlas-logo"><GraduationCap/><strong>Atlas</strong></div>
-      <nav aria-label="Navegación"><button className="activo"><BookOpen size={18}/>{usuario.rol==="docente"?"Mis clases":"Mis materias"}</button></nav>
+      <nav aria-label="Navegación">{usuario.rol==="docente" ?
+        <button className="activo"><BookOpen size={18}/> Mis clases</button> :
+        <>
+          <button className={vistaAlumno==="inicio"?"activo":""} onClick={()=>setVistaAlumno("inicio")}><GraduationCap size={18}/> Inicio</button>
+          <button className={vistaAlumno==="clases"?"activo":""} onClick={()=>setVistaAlumno("clases")}><BookOpen size={18}/> Mis materias</button>
+          <button className={vistaAlumno==="tutor"?"activo":""} onClick={()=>setVistaAlumno("tutor")}><BookOpen size={18}/> Tutor Atlas</button>
+          <button className={vistaAlumno==="pausa"?"activo":""} onClick={()=>setVistaAlumno("pausa")}><BookOpen size={18}/> Pausa y desafíos</button>
+        </>}</nav>
       <div className="atlas-lateral-pie"><span>{usuario.nombre} · {usuario.rol}</span><button onClick={()=>void salir()}><LogOut size={17}/> Cerrar sesión</button></div>
     </aside>
     <main className="atlas-contenido">
       <div className="atlas-cabecera"><span className="atlas-etiqueta"><GraduationCap size={16}/> Espacio {usuario.rol}</span><button className="atlas-enlace" onClick={()=>void salir()}>Salir</button></div>
-      <section className="atlas-pagina atlas-aulas-dashboard">
-        <div className="atlas-aulas-hero"><span className="atlas-sobrelinea">{usuario.rol==="docente"?"Tu espacio de enseñanza":"Tu espacio para aprender"}</span><h1>{usuario.rol==="docente"?"Panel docente":"Mis clases"}</h1>
-        <p>{usuario.rol==="docente"?"Creá clases, compartí el código e incorporá documentos. Solo tu cuenta puede publicar materiales en tus clases.":"Ingresá el código que te dio tu docente y consultá los materiales de tu clase."}</p></div>
-        {usuario.rol==="docente" ? <form className="atlas-caja atlas-formulario atlas-aulas-card" onSubmit={e=>{e.preventDefault();void ejecutar(()=>llamar("/api/aulas/crear",{nombre:nombreAula,materia}),"Clase creada. Compartí su código con tus estudiantes.");}}>
+      {usuario.rol==="alumno" && vistaAlumno==="inicio" && <section className="atlas-inicio-real">
+        <section className="atlas-hero"><div><span className="atlas-sobrelinea">Tu espacio para aprender</span><h1>¡Hola, {usuario.nombre}! ¿Qué aprendemos hoy? 👋</h1>
+        <p>Elegí una materia, consultá los materiales de tu docente y avanzá a tu ritmo.</p>
+        <button className="atlas-boton" onClick={()=>setVistaAlumno("clases")}>Explorar mis materias →</button></div>
+        <div className="atlas-hero-dibujo" aria-hidden="true"><span>📚</span><span>✏️</span><span>🌱</span></div></section>
+        <div className="atlas-titulo-seccion"><h2>Mis materias</h2><span>Clases en las que estás inscripto/a</span></div>
+        {aulas.length ? <div className="atlas-tarjetas">{aulas.map(a=><button className="atlas-materia atlas-azul" key={a.id} onClick={()=>{setSeleccion(a.id);setVistaAlumno("tutor");}}><BookOpen size={29}/><strong>{a.materia}</strong><small>{a.nombre}</small><span>Estudiar →</span></button>)}</div> : <div className="atlas-aviso">Todavía no te uniste a ninguna clase. Ingresá el código que te dio tu docente.</div>}
+        <div className="atlas-dos-columnas"><section className="atlas-caja"><BookOpen/><h3>Mis clases</h3><p>Organizá las materias y los documentos disponibles.</p><button className="atlas-enlace" onClick={()=>setVistaAlumno("clases")}>Ver mis clases →</button></section>
+        <section className="atlas-caja"><GraduationCap/><h3>Tu tutor Atlas</h3><p>Buscá información en las guías de tus docentes.</p><button className="atlas-enlace" onClick={()=>setVistaAlumno("tutor")}>Ir al tutor →</button></section></div>
+      </section>}
+      {(usuario.rol==="docente" || vistaAlumno!=="inicio") &&       <section className="atlas-pagina atlas-aulas-dashboard">
+        {usuario.rol==="docente" && <div className="atlas-aulas-hero"><span className="atlas-sobrelinea">{usuario.rol==="docente"?"Tu espacio de enseñanza":"Tu espacio para aprender"}</span><h1>{usuario.rol==="docente"?"Panel docente":"Mis clases"}</h1>
+        <p>{usuario.rol==="docente"?"Creá clases, compartí el código e incorporá documentos. Solo tu cuenta puede publicar materiales en tus clases.":"Ingresá el código que te dio tu docente y consultá los materiales de tu clase."}</p></div>}
+        {(usuario.rol==="docente" || vistaAlumno==="clases") && (usuario.rol==="docente" ? <form className="atlas-caja atlas-formulario atlas-aulas-card" onSubmit={e=>{e.preventDefault();void ejecutar(()=>llamar("/api/aulas/crear",{nombre:nombreAula,materia}),"Clase creada. Compartí su código con tus estudiantes.");}}>
           <h2>Crear clase</h2><label htmlFor="n-aula">Nombre del curso</label><input id="n-aula" required value={nombreAula} onChange={e=>setNombreAula(e.target.value)} placeholder="Ej.: 5.º A"/>
           <label htmlFor="m-aula">Materia</label><input id="m-aula" required value={materia} onChange={e=>setMateria(e.target.value)} placeholder="Ej.: Ciencias Naturales"/>
           <button className="atlas-boton" disabled={ocupado} type="submit">Crear clase y código</button>
@@ -138,13 +156,13 @@ export default function AtlasAulas() {
           <h2><Users size={20}/> Unirme a una clase</h2><label htmlFor="codigo-clase">Código de clase</label>
           <input id="codigo-clase" value={codigo} onChange={e=>setCodigo(e.target.value.toUpperCase())} maxLength={20} required placeholder="Ej.: A1B2C3D4"/>
           <button className="atlas-boton" disabled={ocupado} type="submit">Unirme</button>
-        </form>}
+        </form>)}
         <p role="status">{estado}</p>
-        <div className="atlas-caja atlas-aulas-card" style={{marginTop:20}}>
+        {(usuario.rol==="docente" || vistaAlumno==="clases" || vistaAlumno==="tutor") && <div className="atlas-caja atlas-aulas-card" style={{marginTop:20}}>
           <h2>{usuario.rol==="docente"?"Clases que administrás":"Clases a las que pertenecés"}</h2>
           {!aulas.length?<p>Todavía no hay clases.</p>:<div className="atlas-selector-materias">{aulas.map(a=><button key={a.id} className={seleccion===a.id?"elegida":""} onClick={()=>{setSeleccion(a.id);setResultados([]);setEstado("");}}>{a.nombre} · {a.materia}</button>)}</div>}
-        </div>
-        {aula&&<div className="atlas-caja atlas-aulas-card" style={{marginTop:18}}>
+        </div>}
+        {aula && (usuario.rol==="docente" || vistaAlumno==="tutor") && <div className="atlas-caja atlas-aulas-card" style={{marginTop:18}}>
           <h2>{aula.nombre} · {aula.materia}</h2>
           {usuario.rol==="docente"&&<p><strong>Código de invitación:</strong> <code>{aula.codigo}</code></p>}
           <h3><BookOpen size={18} style={{display:"inline",verticalAlign:"middle"}}/> Material de la clase</h3>
@@ -161,11 +179,11 @@ export default function AtlasAulas() {
             {resultados.length>0&&<div aria-live="polite"><h3>Fragmentos encontrados</h3>{resultados.map((r,i)=><article className="atlas-aviso" style={{marginTop:12}} key={i}><strong>{r.nombre} · página {r.pagina}</strong><p>{r.texto}</p></article>)}</div>}
           </>}
         </div>}
-        {usuario.rol==="alumno"&&<div className="atlas-caja" style={{marginTop:18}}>
+        {usuario.rol==="alumno"&&vistaAlumno==="pausa"&&<div className="atlas-caja" style={{marginTop:18}}>
           <button className="atlas-enlace" onClick={()=>setPausa(!pausa)}>{pausa?"Cerrar desafíos":"Pausa y desafíos"}</button>
           {pausa&&<><div className="atlas-selector-materias"><button onClick={()=>setEtapa("primaria")}>Primaria</button><button onClick={()=>setEtapa("secundaria")}>Secundaria</button></div><PausaAtlas etapa={etapa}/></>}
         </div>}
-      </section>
+      </section>}
       <footer className="atlas-pie">Atlas · Prototipo local con cuentas y aulas · Sin sincronización offline todavía</footer>
     </main>
   </div>;
