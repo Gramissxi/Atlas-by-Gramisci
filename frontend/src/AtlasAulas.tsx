@@ -188,6 +188,7 @@ export default function AtlasAulas() {
     finally{setOcupado(false)}
   }
   const pendientes=evaluaciones.filter(e=>!e.entregada);
+  const sinCorregir=seguimiento.filter(r=>r.entregado_en&&r.nota===null).length;
   const correccionesNuevas=evaluaciones.filter(e=>e.entregada&&e.nota!==null&&e.nota!==undefined&&!avisosVistos.includes(e.id));
   const vista = usuario.rol==="docente"?vistaDocente:vistaAlumno;
   const navegar=(v:string)=>{setMenuAbierto(false); if(usuario.rol==="docente")setVistaDocente(v as typeof vistaDocente);else setVistaAlumno(v as typeof vistaAlumno);setEstado("");};
@@ -214,7 +215,7 @@ export default function AtlasAulas() {
     <aside className={"atlas-v2-sidebar "+(menuAbierto?"atlas-v2-sidebar-open":"")}>
       <div className="atlas-v2-brand"><span className="atlas-v2-brand-icon"><GraduationCap size={24}/></span><div><strong>Atlas</strong><small>Aprendemos juntos</small></div><button aria-label="Cerrar menú" className="atlas-v2-close" onClick={()=>setMenuAbierto(false)}><X size={20}/></button></div>
       <div className="atlas-v2-sidebar-label">MENÚ PRINCIPAL</div>
-      <nav aria-label="Secciones de Atlas">{secciones.map(([id,label,icono])=><button key={id as string} className={vista===id?"activo":""} onClick={()=>navegar(id as string)}>{icono}{label}{usuario.rol==="alumno"&&id==="actividades"&&(pendientes.length+correccionesNuevas.length)>0&&<span className="atlas-v2-count">{(pendientes.length+correccionesNuevas.length)>99?"99+":pendientes.length+correccionesNuevas.length}</span>}</button>)}</nav>
+      <nav aria-label="Secciones de Atlas">{secciones.map(([id,label,icono])=><button key={id as string} className={vista===id?"activo":""} onClick={()=>navegar(id as string)}>{icono}{label}{usuario.rol==="docente"&&id==="seguimiento"&&sinCorregir>0&&<span className="atlas-v2-count">{sinCorregir>99?"99+":sinCorregir}</span>}{usuario.rol==="alumno"&&id==="actividades"&&pendientes.length>0&&<span className="atlas-v2-count">{pendientes.length>99?"99+":pendientes.length}</span>}</button>)}</nav>
       <div className="atlas-v2-sidebar-bottom"><div className="atlas-v2-user"><span>{usuario.nombre.slice(0,1).toUpperCase()}</span><div><strong>{usuario.nombre}</strong><small>{usuario.rol==="docente"?"Docente":"Estudiante"}</small></div></div><button onClick={()=>void salir()}><LogOut size={18}/> Cerrar sesión</button></div>
     </aside>
     {menuAbierto&&<button className="atlas-v2-scrim" onClick={()=>setMenuAbierto(false)} aria-label="Cerrar menú"/>}
