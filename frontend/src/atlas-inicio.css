@@ -164,3 +164,10 @@ button.atlas-v2-task:hover{background:#eaf7f2}
 .atlas-v2-graded{display:flex;flex-direction:column;gap:4px;background:#e7f6ee;color:#156d53;border-radius:9px;padding:9px 12px;font-size:12px;font-weight:750;max-width:260px}
 .atlas-v2-graded small{font-weight:400;color:#527d6e;white-space:normal;overflow-wrap:anywhere}
 .atlas-v2-eval-editor>.atlas-v2-primary{align-self:flex-start}
+
+/* Lectura de evaluaciones ya entregadas y devolución completa */
+.atlas-v2-feedback{margin-top:18px;padding:20px;border-radius:14px;border:1px solid #c7e7d8;background:#ecf8f1;color:#255e51}
+.atlas-v2-feedback h3{margin:0 0 12px;color:#1d6c59}
+.atlas-v2-feedback strong{display:block;font-size:21px}
+.atlas-v2-feedback p{font-size:14px!important;color:#365f55!important;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}
+.atlas-v2-eval-open textarea[readonly]{background:#f4f8f7;color:#405e60;cursor:default}
