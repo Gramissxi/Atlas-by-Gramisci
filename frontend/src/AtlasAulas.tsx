@@ -47,8 +47,8 @@ export default function AtlasAulas() {
       ...(body?{body:JSON.stringify(body)}:{})
     });
     const cuerpo=await respuesta.text();
-    let datos:Record<string,unknown>;
-    try { datos=cuerpo?JSON.parse(cuerpo) as Record<string,unknown>:{}; }
+    let datos: { [key:string]: any };
+    try { datos=cuerpo?JSON.parse(cuerpo) as { [key:string]: any }:{}; }
     catch {throw new Error("El servidor devolvió una respuesta no válida. Revisá la terminal de api_aulas.py.");}
     if(!respuesta.ok) throw new Error(typeof datos.error==="string"?datos.error:"Error de servidor ("+respuesta.status+"). Revisá api_aulas.py.");
     if(!cuerpo) throw new Error("El servidor no devolvió datos. Revisá api_aulas.py.");
