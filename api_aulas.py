@@ -276,6 +276,14 @@ class Handler(BaseHTTPRequestHandler):
                     JOIN documentos d ON d.id=CAST(f.documento_id AS INTEGER)
                     WHERE f.aula_id=? AND fragmentos MATCH ?
                     ORDER BY bm25(fragmentos) LIMIT 5""",(str(aula_id),expresion)).fetchall()
+                    if not filas:
+                        # Respaldo lexical: ante discrepancias del índice, buscar
+                        # los términos en el texto indexado, siempre dentro del aula.
+                        condiciones = " OR ".join("LOWER(f.texto) LIKE ?" for _ in tokens)
+                        parametros = [str(aula_id)] + ["%" + t + "%" for t in tokens]
+                        filas = db.execute(f"""SELECT d.nombre,f.pagina,f.texto FROM fragmentos f
+                            JOIN documentos d ON d.id=CAST(f.documento_id AS INTEGER)
+                            WHERE f.aula_id=? AND ({condiciones}) LIMIT 5""",parametros).fetchall()
                 return self.responder({"resultados":[dict(r) for r in filas]})
             raise ErrorUsuario("Ruta inexistente",404)
         except ErrorUsuario as e:
