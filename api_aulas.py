@@ -267,6 +267,12 @@ class Handler(BaseHTTPRequestHandler):
             if ruta == "/api/aulas/consultar":
                 aula_id = int(datos.get("aula_id",0))
                 pregunta = texto_corto(datos.get("pregunta"),400)
+                ids_solicitados = datos.get("documentos_ids")
+                if ids_solicitados is not None:
+                    if (not isinstance(ids_solicitados,list) or not ids_solicitados
+                        or len(ids_solicitados)>100 or any(type(x) is not int or x<=0 for x in ids_solicitados)):
+                        raise ErrorUsuario("Seleccioná uno o más documentos válidos")
+                    ids_solicitados = list(dict.fromkeys(ids_solicitados))
                 tokens = terminos(pregunta)
                 if not tokens:
                     raise ErrorUsuario("Escribí una pregunta más específica")
@@ -286,8 +292,13 @@ class Handler(BaseHTTPRequestHandler):
                             "estado": "SIN_INDICE",
                             "detalle": "Hay documentos publicados, pero no hay fragmentos indexados para esta clase. Es necesario reconstruir el índice."
                         })
+                    if ids_solicitados is not None:
+                        disponibles = {r[0] for r in db.execute(
+                            "SELECT id FROM documentos WHERE aula_id=?", (aula_id,))}
+                        if not set(ids_solicitados).issubset(disponibles):
+                            raise ErrorUsuario("Algún documento no pertenece a la clase",403)
                     from services.recuperacion_aulas import recuperar
-                    filas = recuperar(db, aula_id, pregunta, limite=5)
+                    filas = recuperar(db, aula_id, pregunta, limite=5, documentos_ids=ids_solicitados)
                 segundos_recuperacion = round(time.perf_counter() - inicio_recuperacion, 3)
                 from services.generador_rag_aulas import responder_con_documentos
                 # La autorización se verificó antes de recuperar el contexto.
