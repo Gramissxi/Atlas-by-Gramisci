@@ -23,7 +23,7 @@ def generar_preguntas(fragmentos, cantidad, dificultad, formato, modelo=None):
         "No inventes información, no pidas contenido que las fuentes no cubren. "
         "Para formato opción múltiple incluí alternativas A, B, C y D dentro de cada enunciado; "
         "para formato desarrollo redactá preguntas abiertas; para mixto alterná ambos tipos. "
-        "No incluyas respuestas en el borrador."
+        "Cada alternativa debe ir en una línea separada y comenzar A), B), C) o D). No incluyas respuestas en el borrador."
     )
     pedido = f"Generá exactamente {cantidad} preguntas, dificultad {dificultad}, formato {formato}.\nFUENTES:\n{fuentes}"
     esquema={"type":"object","properties":{"preguntas":{"type":"array","items":{"type":"object","properties":{"enunciado":{"type":"string"}},"required":["enunciado"]}}},"required":["preguntas"]}
@@ -54,6 +54,12 @@ def generar_preguntas(fragmentos, cantidad, dificultad, formato, modelo=None):
         preguntas=[p.strip() for p in preguntas if isinstance(p,str) and 8<=len(p.strip())<=500]
     except (ValueError,TypeError,KeyError):
         raise ValueError("Ollama no devolvió preguntas válidas. Intentá nuevamente.")
+    if formato in ("multiple","mixto"):
+        indices=range(len(preguntas)) if formato=="multiple" else range(0,len(preguntas),2)
+        patron=re.compile(r"(?im)(?:^|\\n)\\s*[A-D][).:]\\s*\\S+")
+        invalidas=[i+1 for i in indices if len(patron.findall(preguntas[i]))<4]
+        if invalidas:
+            raise ValueError("Ollama no respetó el formato de opción múltiple en las preguntas "+", ".join(map(str,invalidas))+". Volvé a generar.")
     if len(preguntas)!=cantidad:
         raise ValueError(f"Ollama generó {len(preguntas)} preguntas válidas de {cantidad}. Intentá nuevamente o elegí menos.")
     return preguntas
