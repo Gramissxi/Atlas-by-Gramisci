@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from services.generacion_equilibrada_aulas import generar_equilibrado
+from services.generacion_equilibrada_aulas import generar_equilibrado, clave_pregunta
 
 
 class FakeDB:
@@ -8,6 +8,14 @@ class FakeDB:
 
 
 class TestGeneracionEquilibrada(unittest.TestCase):
+    def test_claves_diferencian_preguntas_y_omiten_alternativas(self):
+        primera = "¿Qué es la entropía? A) Uno B) Dos C) Tres D) Cuatro"
+        segunda = "¿Cuál es la unidad del decibel?"
+        repetida = "¿QUÉ ES LA ENTROPÍA? A) Cinco B) Seis C) Siete D) Ocho"
+        self.assertNotEqual(clave_pregunta(primera), clave_pregunta(segunda))
+        self.assertEqual(clave_pregunta(primera), clave_pregunta(repetida))
+        self.assertTrue(clave_pregunta(segunda))
+
     def test_tres_documentos_cinco_preguntas(self):
         llamadas = []
 
