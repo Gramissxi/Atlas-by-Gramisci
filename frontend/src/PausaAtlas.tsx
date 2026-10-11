@@ -114,25 +114,60 @@ function JuegoMemoria({banco,grupo}:{banco:Banco;grupo:string}){
   return <div className="atlas-juego-cuerpo"><p className="atlas-juego-subtitulo">Memoria · {resueltas.length}/3 parejas · {intentos} intentos</p><p>Encontrá los conceptos y sus definiciones. Al mezclar cambian las parejas.</p><div className="atlas-memoria-grid">{cartas.map(c=><button key={c.id} disabled={resueltas.includes(c.par)} className={resueltas.includes(c.par)?"resuelta":""} onClick={()=>elegir(c)}>{visibles.includes(c.id)||resueltas.includes(c.par)?c.texto:"?"}</button>)}</div>{resueltas.length===3&&<p>¡Encontraste todas las parejas!</p>}<button className="atlas-enlace" onClick={reiniciar}><RotateCcw size={15}/> Mezclar con otras parejas</button></div>;
 }
 
+type Herramienta="lapiz"|"borrador"|"circulo"|"estrella"|"corazon"|"sol"|"cuadrado";
+const stickers:[Herramienta,string][]=[["circulo","● Círculo"],["estrella","★ Estrella"],["corazon","♥ Corazón"],["sol","☀ Sol"],["cuadrado","■ Cuadrado"]];
 function Lienzo(){
   const canvas=useRef<HTMLCanvasElement|null>(null);
   const pintando=useRef(false);
   const [color,setColor]=useState("#176b5b");
-  const [grosor,setGrosor]=useState(5);
+  const [grosor,setGrosor]=useState(6);
+  const [herramienta,setHerramienta]=useState<Herramienta>("lapiz");
+  const colores=["#176b5b","#e45c74","#f5a524","#6875e8","#822eb5","#20262e"];
   function ubicacion(e:PointerEvent<HTMLCanvasElement>){
-    const c=canvas.current!;
-    const rect=c.getBoundingClientRect();
+    const c=canvas.current!,rect=c.getBoundingClientRect();
     return {x:(e.clientX-rect.left)*c.width/rect.width,y:(e.clientY-rect.top)*c.height/rect.height};
+  }
+  function figura(ctx:CanvasRenderingContext2D,x:number,y:number){
+    const size=20+grosor*2;
+    ctx.save();ctx.globalCompositeOperation="source-over";ctx.fillStyle=color;ctx.strokeStyle=color;ctx.lineWidth=4;
+    if(herramienta==="circulo"){ctx.beginPath();ctx.arc(x,y,size,0,Math.PI*2);ctx.fill();}
+    else if(herramienta==="cuadrado"){ctx.fillRect(x-size,y-size,size*2,size*2);}
+    else if(herramienta==="estrella"){
+      ctx.beginPath();for(let i=0;i<10;i++){const ang=-Math.PI/2+i*Math.PI/5,radio=i%2?size*.47:size;const px=x+Math.cos(ang)*radio,py=y+Math.sin(ang)*radio;if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);}ctx.closePath();ctx.fill();
+    }else if(herramienta==="corazon"){
+      ctx.beginPath();ctx.moveTo(x,y+size*.85);ctx.bezierCurveTo(x-size*1.8,y-size*.2,x-size*.8,y-size*1.1,x,y-size*.45);ctx.bezierCurveTo(x+size*.8,y-size*1.1,x+size*1.8,y-size*.2,x,y+size*.85);ctx.fill();
+    }else if(herramienta==="sol"){
+      ctx.beginPath();ctx.arc(x,y,size*.55,0,Math.PI*2);ctx.fill();ctx.beginPath();for(let i=0;i<8;i++){const ang=i*Math.PI/4;ctx.moveTo(x+Math.cos(ang)*size*.75,y+Math.sin(ang)*size*.75);ctx.lineTo(x+Math.cos(ang)*size*1.15,y+Math.sin(ang)*size*1.15);}ctx.stroke();
+    }
+    ctx.restore();
   }
   function comenzar(e:PointerEvent<HTMLCanvasElement>){
     const c=canvas.current!,ctx=c.getContext("2d");if(!ctx)return;
+    const p=ubicacion(e);
+    if(herramienta!=="lapiz"&&herramienta!=="borrador"){figura(ctx,p.x,p.y);return;}
     e.currentTarget.setPointerCapture(e.pointerId);pintando.current=true;
-    const p=ubicacion(e);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+0.1,p.y);ctx.strokeStyle=color;ctx.lineWidth=grosor;ctx.lineCap="round";ctx.lineJoin="round";ctx.stroke();
+    ctx.globalCompositeOperation=herramienta==="borrador"?"destination-out":"source-over";
+    ctx.strokeStyle=herramienta==="borrador"?"rgba(0,0,0,1)":color;
+    ctx.lineWidth=herramienta==="borrador"?grosor*4:grosor;
+    ctx.lineCap="round";ctx.lineJoin="round";
+    ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+.1,p.y);ctx.stroke();
   }
   function mover(e:PointerEvent<HTMLCanvasElement>){if(!pintando.current)return;const ctx=canvas.current?.getContext("2d");if(!ctx)return;const p=ubicacion(e);ctx.lineTo(p.x,p.y);ctx.stroke();}
+  function terminar(){pintando.current=false;const ctx=canvas.current?.getContext("2d");if(ctx)ctx.globalCompositeOperation="source-over";}
   function limpiar(){const c=canvas.current;if(c)c.getContext("2d")?.clearRect(0,0,c.width,c.height);}
   function guardar(){const c=canvas.current;if(!c)return;const exportado=document.createElement("canvas");exportado.width=c.width;exportado.height=c.height;const ctx=exportado.getContext("2d");if(!ctx)return;ctx.fillStyle="#ffffff";ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(c,0,0);const a=document.createElement("a");a.download="mi-dibujo-atlas.png";a.href=exportado.toDataURL("image/png");a.click();}
-  return <div className="atlas-juego-cuerpo"><p className="atlas-juego-subtitulo">Mi rincón de dibujo · libre y sin conexión</p><p>Podés dibujar con mouse, dedo o lápiz táctil. El dibujo queda en esta pantalla hasta que lo guardes o cierres.</p><div className="atlas-pintura-herramientas"><label>Color <input aria-label="Color del lápiz" type="color" value={color} onChange={e=>setColor(e.target.value)}/></label><label>Trazo <input aria-label="Grosor del trazo" type="range" min="2" max="22" value={grosor} onChange={e=>setGrosor(Number(e.target.value))}/></label><button className="atlas-enlace" onClick={limpiar}>Borrar dibujo</button><button className="atlas-boton" onClick={guardar}>Guardar PNG</button></div><canvas ref={canvas} width={760} height={410} className="atlas-lienzo" aria-label="Lienzo para dibujar" onPointerDown={comenzar} onPointerMove={mover} onPointerUp={()=>pintando.current=false} onPointerCancel={()=>pintando.current=false}/></div>;
+  return <div className="atlas-juego-cuerpo atlas-paint-editor">
+    <p className="atlas-juego-subtitulo">Taller creativo · Paint Atlas</p>
+    <h3>Dibujá, borrá y decorá</h3>
+    <p>Usá lápices, figuras y stickers propios de Atlas. Todo se dibuja localmente y podés guardar tu obra como PNG.</p>
+    <div className="atlas-paint-toolbar">
+      <div className="atlas-paint-tools"><button className={herramienta==="lapiz"?"activo":""} onClick={()=>setHerramienta("lapiz")}>✏️ Lápiz</button><button className={herramienta==="borrador"?"activo":""} onClick={()=>setHerramienta("borrador")}>◻️ Borrador</button>{stickers.map(([id,label])=><button key={id} className={herramienta===id?"activo":""} onClick={()=>setHerramienta(id)}>{label}</button>)}</div>
+      <div className="atlas-paint-colors"><span>Colores</span>{colores.map(c=><button key={c} className={color===c?"activo":""} aria-label={"Color "+c} style={{background:c}} onClick={()=>{setColor(c);setHerramienta("lapiz");}}/>)}<label>Otro <input aria-label="Personalizar color" type="color" value={color} onChange={e=>setColor(e.target.value)}/></label></div>
+      <div className="atlas-paint-actions"><label>Tamaño <input aria-label="Grosor" type="range" min="2" max="22" value={grosor} onChange={e=>setGrosor(Number(e.target.value))}/></label><button className="atlas-enlace" onClick={limpiar}>Limpiar lienzo</button><button className="atlas-boton" onClick={guardar}>Guardar PNG</button></div>
+    </div>
+    <canvas ref={canvas} width={760} height={410} className="atlas-lienzo" aria-label="Lienzo para dibujar" onPointerDown={comenzar} onPointerMove={mover} onPointerUp={terminar} onPointerCancel={terminar}/>
+    <small>Para colocar una figura, elegila y hacé clic donde quieras dibujarla.</small>
+  </div>;
 }
 
 export default function PausaAtlas({etapa,grado="",materia=""}:{etapa:Etapa;grado?:string;materia?:string}){
