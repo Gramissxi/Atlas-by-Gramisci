@@ -29,6 +29,7 @@ export default function AtlasAulas() {
   const [resultados,setResultados] = useState<Resultado[]>([]);
   const [respuestaTutor,setRespuestaTutor] = useState("");
   const [modoTutor,setModoTutor] = useState("");
+  const [metricasTutor,setMetricasTutor] = useState<{segundos_generacion?:number;tokens_generados?:number;truncada?:boolean}|null>(null);
   const [estado,setEstado] = useState("");
   const [ocupado,setOcupado] = useState(false);
   const [etapa,setEtapa] = useState<"primaria"|"secundaria">("primaria");
@@ -84,8 +85,8 @@ export default function AtlasAulas() {
   async function preguntar(e:FormEvent){
     e.preventDefault();
     if(seleccion===null)return;
-    setOcupado(true);setEstado("");setResultados([]);setRespuestaTutor("");setModoTutor("");
-    try{const respuesta=await llamar("/api/aulas/consultar",{aula_id:seleccion,pregunta});setResultados(respuesta.resultados);setRespuestaTutor(respuesta.respuesta || "");setModoTutor(respuesta.modo || "");
+    setOcupado(true);setEstado("");setResultados([]);setRespuestaTutor("");setModoTutor("");setMetricasTutor(null);
+    try{const respuesta=await llamar("/api/aulas/consultar",{aula_id:seleccion,pregunta});setResultados(respuesta.resultados);setRespuestaTutor(respuesta.respuesta || "");setModoTutor(respuesta.modo || "");setMetricasTutor({segundos_generacion:respuesta.segundos_generacion,tokens_generados:respuesta.tokens_generados,truncada:respuesta.truncada});
       if(!respuesta.resultados.length)setEstado(respuesta.detalle || "No encontré coincidencias. Probá con un término del documento.");
     }catch(e){setEstado(e instanceof Error?e.message:"Error al consultar")}
     finally{setOcupado(false)}
@@ -182,6 +183,8 @@ export default function AtlasAulas() {
             {respuestaTutor&&<div className="atlas-aviso" aria-live="polite" style={{marginTop:16}}>
               <h3>{modoTutor==="ollama_local"?"Respuesta de Atlas · IA local":"Consulta documental"}</h3>
               <p style={{whiteSpace:"pre-wrap"}}>{respuestaTutor}</p>
+              {metricasTutor?.truncada && <p role="alert"><strong>Esta respuesta llegó al límite de generación y puede estar incompleta.</strong> Intentá una pregunta más específica.</p>}
+              {typeof metricasTutor?.segundos_generacion==="number" && <p><small>Generación local: {metricasTutor.segundos_generacion} s{typeof metricasTutor.tokens_generados==="number" ? ` · ${metricasTutor.tokens_generados} tokens` : ""}.</small></p>}
               {modoTutor==="ollama_local"&&<small>Respuesta automática: comprobá las referencias con el documento original.</small>}
             </div>}
             {resultados.length>0&&<div aria-live="polite"><h3>Fuentes encontradas</h3>{resultados.map((r,i)=><article className="atlas-aviso" style={{marginTop:12}} key={i}><strong>{r.nombre} · página {r.pagina}</strong><p>{r.texto}</p></article>)}</div>}
