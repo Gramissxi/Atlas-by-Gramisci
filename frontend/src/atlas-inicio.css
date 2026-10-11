@@ -12,3 +12,20 @@
 .atlas-formulario .atlas-boton{margin-top:13px;align-self:flex-start}
 .atlas-formulario input:focus{border-color:#075b59!important}
 .atlas-formulario input[type=file]{height:auto;padding:12px!important}
+
+/* Paneles con la identidad visual original de Atlas, adaptados a roles. */
+.atlas-aulas-dashboard{max-width:1060px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.atlas-aulas-hero{border-radius:18px;padding:28px 30px;background:linear-gradient(115deg,#e0f3ed,#f5faf7);border:1px solid #d2e9e1}
+.atlas-aulas-hero h1{margin:12px 0 8px}
+.atlas-aulas-hero p{max-width:720px;margin-bottom:0}
+.atlas-aulas-card{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:13px!important;min-width:0}
+.atlas-aulas-card h2,.atlas-aulas-card h3{margin:0 0 5px}
+.atlas-aulas-card label{display:block!important;font-weight:650;margin:4px 0 1px}
+.atlas-aulas-card input:not([type=file]){display:block!important;width:100%!important;max-width:620px;box-sizing:border-box!important;padding:11px 13px!important;border:1px solid #b5d2ca!important;border-radius:10px!important;background:white!important;color:#172b32!important;min-height:43px}
+.atlas-aulas-card input[type=file]{display:block;max-width:100%;margin:8px 0}
+.atlas-aulas-card .atlas-boton{align-self:flex-start}
+.atlas-aulas-card .atlas-pregunta{display:flex;align-items:stretch;gap:12px;flex-wrap:wrap}
+.atlas-aulas-card .atlas-pregunta input{flex:1;max-width:none}
+.atlas-aulas-card .atlas-pregunta button{min-height:43px}
+.atlas-aulas-card .atlas-selector-materias{display:flex;gap:10px;flex-wrap:wrap}
+@media(max-width:650px){.atlas-aulas-hero{padding:20px}.atlas-aulas-dashboard{padding:0}}
