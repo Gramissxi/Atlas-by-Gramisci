@@ -109,7 +109,7 @@ def _generar_lote(fragmentos, cantidad, dificultad, formato, modelo=None, exclui
                 if (not isinstance(opciones,list) or len(opciones)!=4
                     or any(not isinstance(x,str) or not x.strip() or len(x)>230 for x in opciones)):
                     continue
-                pregunta=enunciado.strip()+"\\n"+"\\n".join(
+                pregunta=enunciado.strip()+"\n"+"\n".join(
                     f"{letra}) {opcion.strip()}" for letra,opcion in zip("ABCD",opciones))
             else:
                 pregunta=enunciado.strip()
