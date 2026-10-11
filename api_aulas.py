@@ -297,6 +297,81 @@ class Handler(BaseHTTPRequestHandler):
                     db.executemany("INSERT INTO fragmentos(documento_id,aula_id,pagina,texto) VALUES (?,?,?,?)",
                             ((doc_id,aula_id,p,t) for p,t in fragmentos))
                 return self.responder({"ok":True,"fragmentos":len(fragmentos)},201)
+            if ruta == "/api/aulas/documento/eliminar":
+                if user["rol"]!="docente":raise ErrorUsuario("Solo docentes pueden eliminar PDF",403)
+                documento_id=int(datos.get("documento_id",0))
+                with LOCK, conexion() as db:
+                    doc=db.execute("SELECT id,aula_id FROM documentos WHERE id=?",(documento_id,)).fetchone()
+                    if not doc:raise ErrorUsuario("PDF inexistente",404)
+                    permiso_aula(db,user,doc["aula_id"],docente=True)
+                    evaluaciones=db.execute("SELECT id,titulo,documentos_ids FROM evaluaciones WHERE aula_id=?",(doc["aula_id"],)).fetchall()
+                    dependencias=[e["titulo"] for e in evaluaciones if documento_id in json.loads(e["documentos_ids"])]
+                    if dependencias:
+                        raise ErrorUsuario("No se puede eliminar: este PDF está asociado a evaluaciones ("+", ".join(dependencias[:4])+"). Conservá el historial o eliminá primero los borradores que correspondan.",409)
+                    db.execute("DELETE FROM fragmentos WHERE CAST(documento_id AS INTEGER)=? AND CAST(aula_id AS INTEGER)=?",(documento_id,doc["aula_id"]))
+                    db.execute("DELETE FROM documentos_archivos WHERE documento_id=?",(documento_id,))
+                    db.execute("DELETE FROM documentos WHERE id=?",(documento_id,))
+                return self.responder({"ok":True})
+            if ruta == "/api/aulas/evaluaciones/eliminar-borrador":
+                if user["rol"]!="docente":raise ErrorUsuario("Solo docentes pueden eliminar borradores",403)
+                evaluacion_id=int(datos.get("evaluacion_id",0))
+                with LOCK, conexion() as db:
+                    e=db.execute("SELECT aula_id,estado FROM evaluaciones WHERE id=?",(evaluacion_id,)).fetchone()
+                    if not e:raise ErrorUsuario("Borrador inexistente",404)
+                    permiso_aula(db,user,e["aula_id"],docente=True)
+                    if e["estado"]!="borrador":raise ErrorUsuario("No se pueden borrar evaluaciones publicadas con historial académico",409)
+                    db.execute("DELETE FROM evaluaciones WHERE id=?",(evaluacion_id,))
+                return self.responder({"ok":True})
+            if ruta == "/api/aulas/evaluaciones/pdf":
+                if user["rol"]!="docente":raise ErrorUsuario("Solo docentes pueden descargar esta copia",403)
+                evaluacion_id=int(datos.get("evaluacion_id",0))
+                with conexion() as db:
+                    eva=db.execute("SELECT aula_id,titulo,preguntas FROM evaluaciones WHERE id=?",(evaluacion_id,)).fetchone()
+                    if not eva:raise ErrorUsuario("Evaluación inexistente",404)
+                    permiso_aula(db,user,eva["aula_id"],docente=True)
+                try:
+                    from reportlab.pdfgen import canvas
+                    from reportlab.lib.pagesizes import A4
+                    from reportlab.pdfbase.pdfmetrics import stringWidth
+                    from reportlab.pdfbase import pdfmetrics
+                    from reportlab.pdfbase.ttfonts import TTFont
+                except ImportError:
+                    raise ErrorUsuario("Falta instalar reportlab: pip install reportlab",503)
+                # Unicode completo para español en una fuente TrueType del sistema.
+                fuentes=[Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+                         Path("C:/Windows/Fonts/arial.ttf")]
+                fuente=next((f for f in fuentes if f.is_file()),None)
+                if not fuente:raise ErrorUsuario("No se encontró una fuente compatible para crear el PDF",503)
+                if "AtlasPDF" not in pdfmetrics.getRegisteredFontNames():
+                    pdfmetrics.registerFont(TTFont("AtlasPDF",str(fuente)))
+                salida=io.BytesIO()
+                pagina=canvas.Canvas(salida,pagesize=A4)
+                ancho,alto=A4
+                y=alto-55
+                def linea(texto,tamano=11,espacio=18):
+                    nonlocal y
+                    if y<70:
+                        pagina.showPage();y=alto-55
+                    pagina.setFont("AtlasPDF",tamano);pagina.drawString(48,y,texto);y-=espacio
+                def envolver(cadena,maxancho=ancho-96):
+                    palabras=str(cadena).split()
+                    trozos=[];actual=""
+                    for palabra in palabras:
+                        nuevo=(actual+" "+palabra).strip()
+                        if stringWidth(nuevo,"AtlasPDF",11)>maxancho and actual:
+                            trozos.append(actual);actual=palabra
+                        else:actual=nuevo
+                    if actual:trozos.append(actual)
+                    return trozos
+                for texto,tam in [(eva["titulo"],16),("Nombre y apellido: __________________________",11)]:
+                    for fragmento in envolver(texto):linea(fragmento,tam,26)
+                y-=12
+                for i,pregunta in enumerate(json.loads(eva["preguntas"]),1):
+                    for fragmento in envolver(str(i)+". "+pregunta):linea(fragmento)
+                    linea("________________________________________________________",11,24)
+                    y-=18
+                pagina.save()
+                return self.responder({"nombre":eva["titulo"]+".pdf","base64":base64.b64encode(salida.getvalue()).decode("ascii")})
             if ruta == "/api/aulas/documento":
                 documento_id=int(datos.get("documento_id",0))
                 with conexion() as db:
