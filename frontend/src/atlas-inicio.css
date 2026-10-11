@@ -281,3 +281,23 @@ button.atlas-v2-task:hover{background:#eaf7f2}
 .atlas-pintura-herramientas input[type=color]{height:34px;width:43px;border:0;background:none}
 .atlas-lienzo{width:100%;height:auto;display:block;aspect-ratio:760/410;touch-action:none;border:2px solid #cbded8;border-radius:10px;background:white;cursor:crosshair}
 @media(max-width:550px){.atlas-memoria-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-juegos-menu{gap:7px}.atlas-juegos-menu button{padding:10px 11px;font-size:12px}}
+
+/* Taller creativo con recursos locales, paleta alegre y herramientas livianas */
+.atlas-desafios-nuevos{background:linear-gradient(160deg,#f2fbf8 0%,#fff7ed 65%,#f5f2ff 100%);border:1px solid #dcece6;border-radius:22px;padding:clamp(16px,3vw,28px)}
+.atlas-juegos-menu button:nth-child(1){background:#e1f5f0}
+.atlas-juegos-menu button:nth-child(2){background:#eee9ff}
+.atlas-juegos-menu button:nth-child(3){background:#fff1dc}
+.atlas-juegos-menu button.seleccionado{box-shadow:0 0 0 2px #229b83 inset}
+.atlas-paint-editor>h3{color:#4a537b}
+.atlas-paint-toolbar{display:flex;flex-direction:column;gap:14px;margin:20px 0}
+.atlas-paint-tools{display:flex;gap:8px;flex-wrap:wrap}
+.atlas-paint-tools button{border:1px solid #d6d8e7;background:#fff;border-radius:10px;padding:10px 13px;font-size:13px;cursor:pointer;color:#384b56}
+.atlas-paint-tools button.activo{border-color:#188d76;background:#e0f5eb;box-shadow:0 0 0 1px #188d76}
+.atlas-paint-colors,.atlas-paint-actions{display:flex;align-items:center;flex-wrap:wrap;gap:11px;background:#f7f9ff;border-radius:12px;padding:12px}
+.atlas-paint-colors>span{font-weight:700;font-size:12px}
+.atlas-paint-colors>button{width:29px;height:29px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px #becaca;cursor:pointer}
+.atlas-paint-colors>button.activo{box-shadow:0 0 0 2px #138f7b}
+.atlas-paint-colors label,.atlas-paint-actions label{display:flex;align-items:center;gap:8px;font-size:12px}
+.atlas-paint-colors input[type=color]{width:35px;height:30px;border:0;background:transparent}
+.atlas-paint-editor .atlas-lienzo{background:#fff;box-shadow:0 5px 18px #2434480d}
+.atlas-paint-editor>small{display:block;margin-top:10px;color:#6b7c80}
