@@ -276,7 +276,7 @@ class Handler(BaseHTTPRequestHandler):
                     # Esto permite distinguir índice vacío, coincidencias y errores.
                     total = db.execute(
                         "SELECT COUNT(*) FROM fragmentos WHERE aula_id=?",
-                        (str(aula_id),)
+                        (aula_id,)
                     ).fetchone()[0]
                     if not total:
                         return self.responder({
@@ -290,7 +290,7 @@ class Handler(BaseHTTPRequestHandler):
                     candidatos = db.execute("""SELECT d.nombre, f.pagina, f.texto
                         FROM fragmentos f
                         JOIN documentos d ON d.id=CAST(f.documento_id AS INTEGER)
-                        WHERE f.aula_id=? LIMIT 20000""", (str(aula_id),)).fetchall()
+                        WHERE f.aula_id=? LIMIT 20000""", (aula_id,)).fetchall()
                     import unicodedata
                     def normalizar(texto):
                         return "".join(c for c in unicodedata.normalize("NFKD", texto.casefold())
