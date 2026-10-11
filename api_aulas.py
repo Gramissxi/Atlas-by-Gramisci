@@ -271,7 +271,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise ErrorUsuario("Escribí una pregunta más específica")
                 expresion = " OR ".join('"'+t+'"' for t in tokens)
                 with conexion() as db:
-                    permiso_aula(db,user,aula_id)
+                    aula = permiso_aula(db,user,aula_id)
                     # Consulta primero los fragmentos efectivamente asociados al aula.
                     # Esto permite distinguir índice vacío, coincidencias y errores.
                     total = db.execute(
@@ -304,10 +304,14 @@ class Handler(BaseHTTPRequestHandler):
                             ordenados.append((presentes, dict(candidato)))
                     ordenados.sort(key=lambda x: x[0], reverse=True)
                     filas = [r for _, r in ordenados[:5]]
+                from services.generador_rag_aulas import responder_con_documentos
+                # La autorización se verificó antes de recuperar el contexto.
+                generado = responder_con_documentos(pregunta, filas, materia=aula["materia"])
                 return self.responder({
                     "resultados": filas,
                     "estado": "OK" if filas else "SIN_COINCIDENCIAS",
-                    "fragmentos_disponibles": total
+                    "fragmentos_disponibles": total,
+                    **generado,
                 })
 
             raise ErrorUsuario("Ruta inexistente",404)
