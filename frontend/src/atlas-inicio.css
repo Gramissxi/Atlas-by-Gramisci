@@ -29,3 +29,18 @@
 .atlas-aulas-card .atlas-pregunta button{min-height:43px}
 .atlas-aulas-card .atlas-selector-materias{display:flex;gap:10px;flex-wrap:wrap}
 @media(max-width:650px){.atlas-aulas-hero{padding:20px}.atlas-aulas-dashboard{padding:0}}
+
+/* Materiales seleccionables y referencias del RAG */
+.atlas-documentos-elegir{border:1px solid #d0e5de;background:#f7fbf9;border-radius:14px;padding:18px;margin:18px 0;display:flex;flex-direction:column;gap:12px}
+.atlas-documentos-elegir h3{margin:0}
+.atlas-documentos-elegir p{margin:0}
+.atlas-doc-check{display:flex!important;align-items:center;gap:10px;cursor:pointer;padding:11px 12px;border:1px solid #d9e8e2;border-radius:9px;background:white}
+.atlas-doc-check input{flex:none;width:18px!important;height:18px!important;min-height:auto!important;accent-color:#08716a}
+.atlas-doc-check span{overflow-wrap:anywhere}
+.atlas-doc-check small{color:#617974}
+.atlas-fuente{margin:10px 0;border:1px solid #cfe2dc;background:#f5faf8;border-radius:11px;overflow:hidden}
+.atlas-fuente button{border:0;background:transparent;width:100%;padding:13px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;color:#174f49;cursor:pointer;font-weight:700}
+.atlas-fuente button:hover{background:#e8f4ef}
+.atlas-fuente p{padding:0 13px 14px;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.atlas-configuracion{margin-top:18px;border:1px solid #d4e6df;border-radius:14px;padding:20px;background:#fff}
+.atlas-configuracion h3{display:flex;align-items:center;gap:8px}
