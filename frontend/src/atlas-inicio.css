@@ -160,3 +160,7 @@ button.atlas-v2-task:hover{background:#eaf7f2}
 .atlas-v2-tracking strong{font-size:25px;color:#1e645c}.atlas-v2-tracking small{font-size:12px;color:#74918d}
 .atlas-v2-eval-open>div{padding:12px 0;border-bottom:1px solid #e5efeb}
 @media(max-width:450px){.atlas-v2-tracking{gap:6px}.atlas-v2-tracking>div{padding:11px}.atlas-v2-tracking strong{font-size:21px}}
+
+.atlas-v2-graded{display:flex;flex-direction:column;gap:4px;background:#e7f6ee;color:#156d53;border-radius:9px;padding:9px 12px;font-size:12px;font-weight:750;max-width:260px}
+.atlas-v2-graded small{font-weight:400;color:#527d6e;white-space:normal;overflow-wrap:anywhere}
+.atlas-v2-eval-editor>.atlas-v2-primary{align-self:flex-start}
