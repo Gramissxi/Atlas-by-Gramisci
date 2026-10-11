@@ -20,6 +20,11 @@ export default function AtlasAulas() {
   const [clave,setClave] = useState("");
   const [claveDocente,setClaveDocente] = useState("");
   const [aulas,setAulas] = useState<Aula[]>([]);
+  const [seguimiento,setSeguimiento] = useState<{evaluacion_id:number;titulo:string;aula_id:number;aula_nombre:string;materia:string;alumno_id:number;alumno:string;entregado_en:string|null;nota:number|null;comentario:string|null}[]>([]);
+  const [filtroEvaluacion,setFiltroEvaluacion] = useState<number|null>(null);
+  const [corregir,setCorregir] = useState<{evaluacion_id:number;alumno_id:number;alumno:string;preguntas:string[];respuestas:string[]}|null>(null);
+  const [nota,setNota] = useState("");
+  const [comentario,setComentario] = useState("");
   const [evaluaciones,setEvaluaciones] = useState<{id:number;aula_id:number;titulo:string;estado:string;aula_nombre:string;materia:string;entregada?:number}[]>([]);
   const [tituloEvaluacion,setTituloEvaluacion] = useState("");
   const [preguntasEvaluacion,setPreguntasEvaluacion] = useState([""]);
@@ -64,6 +69,10 @@ export default function AtlasAulas() {
     setAulas(datos.aulas);
     const listado=await llamar("/api/aulas/evaluaciones",undefined,t);
     setEvaluaciones(listado.evaluaciones);
+    if(usuario?.rol==="docente"){
+      const datosSeguimiento=await llamar("/api/aulas/seguimiento",undefined,t);
+      setSeguimiento(datosSeguimiento.seguimiento);
+    }
     setSeleccion(actual=>datos.aulas.some((a:Aula)=>a.id===actual)?actual:(datos.aulas[0]?.id??null));
   }
   // Se mantiene el acceso en memoria durante esta sesión del navegador.
@@ -77,6 +86,7 @@ export default function AtlasAulas() {
         const datos=await llamar("/api/aulas/login",{usuario:login,clave},"");
         setToken(datos.token);setUsuario(datos.usuario);
         await actualizar(datos.token);
+        if(datos.usuario.rol==="docente"){const seg=await llamar("/api/aulas/seguimiento",undefined,datos.token);setSeguimiento(seg.seguimiento);}
       }
     }catch(e){setEstado(e instanceof Error?e.message:"Error de conexión. ¿Está ejecutándose api_aulas.py?")}
     finally{setOcupado(false)}
@@ -108,7 +118,7 @@ export default function AtlasAulas() {
   }
   async function salir() {
     try{await llamar("/api/aulas/salir",{});}catch{/* Cierre local aunque el servidor ya esté desconectado */}
-    setUsuario(null);setToken("");setAulas([]);setResultados([]);setRespuestaTutor("");setSeleccion(null);setDocumentosElegidos([]);setEvaluaciones([]);setEvaluacionAbierta(null);
+    setUsuario(null);setToken("");setAulas([]);setResultados([]);setRespuestaTutor("");setSeleccion(null);setDocumentosElegidos([]);setEvaluaciones([]);setSeguimiento([]);setEvaluacionAbierta(null);setCorregir(null);
   }
 
   const aula=aulas.find(a=>a.id===seleccion);
@@ -148,6 +158,12 @@ export default function AtlasAulas() {
     setOcupado(true);setEstado("");
     try {const datos=await llamar("/api/aulas/evaluaciones/ver",{evaluacion_id:id});setEvaluacionAbierta(datos.evaluacion);setRespuestasAlumno(datos.evaluacion.preguntas.map(()=>''));setVistaAlumno("actividades");}
     catch(e){setEstado(e instanceof Error?e.message:"No se pudo abrir la actividad")}
+    finally{setOcupado(false)}
+  }
+  async function abrirCorreccion(evaluacion_id:number,alumno_id:number,alumno:string){
+    setOcupado(true);setEstado("");
+    try {const datos=await llamar("/api/aulas/evaluaciones/respuestas",{evaluacion_id,alumno_id});setCorregir({evaluacion_id,alumno_id,alumno,preguntas:datos.preguntas,respuestas:datos.respuestas});}
+    catch(e){setEstado(e instanceof Error?e.message:"No se pudo recuperar la entrega")}
     finally{setOcupado(false)}
   }
   const pendientes=evaluaciones.filter(e=>!e.entregada);
@@ -238,7 +254,15 @@ export default function AtlasAulas() {
         {evaluacionAbierta&&<section className="atlas-v2-card atlas-v2-eval-open"><h2>{evaluacionAbierta.titulo}</h2><p>Respondé y entregá cuando termines. No hay corrección automática en esta versión.</p>{evaluacionAbierta.preguntas.map((q,i)=><label key={i}>{i+1}. {q}<textarea rows={3} value={respuestasAlumno[i]??""} onChange={e=>setRespuestasAlumno(old=>old.map((v,j)=>j===i?e.target.value:v))}/></label>)}<button className="atlas-v2-primary" disabled={ocupado} onClick={()=>void ejecutar(async()=>{await llamar("/api/aulas/evaluaciones/entregar",{evaluacion_id:evaluacionAbierta.id,respuestas:respuestasAlumno});setEvaluacionAbierta(null);},"Evaluación entregada correctamente.")}>Entregar evaluación</button></section>}
       </>}
       {vista==="evaluaciones"&&usuario.rol==="docente"&&<section className="atlas-v2-card atlas-v2-eval-list"><h2>Evaluaciones creadas</h2>{evaluaciones.length?evaluaciones.map(e=><div className="atlas-v2-task" key={e.id}><ClipboardList size={20}/><span><strong>{e.titulo}</strong><small>{e.materia} · {e.aula_nombre} · {e.estado==="publicada"?"Publicada":"Borrador"}</small></span>{e.estado==="borrador"&&<button className="atlas-v2-primary" disabled={ocupado} onClick={()=>void ejecutar(()=>llamar("/api/aulas/evaluaciones/publicar",{evaluacion_id:e.id}),"Evaluación publicada. Ya aparece en Mis actividades del alumnado.")}>Publicar</button>}</div>):<p>Todavía no creaste evaluaciones.</p>}</section>}
-      {vista==="seguimiento"&&usuario.rol==="docente"&&<><div className="atlas-v2-page-title"><small>DOCENTES</small><h1>Seguimiento</h1><p>Acá podrás consultar resultados, detectar temas difíciles y recomendar refuerzos.</p></div><div className="atlas-v2-card atlas-v2-empty">Todavía no hay evaluaciones registradas. No mostramos métricas inventadas.</div></>}
+      {vista==="seguimiento"&&usuario.rol==="docente"&&<>
+        <div className="atlas-v2-page-title"><small>DOCENTES</small><h1>Seguimiento</h1><p>Entregas y notas reales por clase y evaluación.</p></div>
+        {aulas.length>0&&elegirClase()}
+        <section className="atlas-v2-card"><h2>Evaluaciones publicadas</h2><label>Evaluación<select value={filtroEvaluacion??""} onChange={e=>setFiltroEvaluacion(e.target.value?Number(e.target.value):null)}><option value="">Todas las evaluaciones</option>{evaluaciones.filter(e=>e.aula_id===seleccion&&e.estado==="publicada").map(e=><option key={e.id} value={e.id}>{e.titulo}</option>)}</select></label>
+        <div className="atlas-v2-tracking"><div><strong>{seguimiento.filter(r=>r.aula_id===seleccion&&(filtroEvaluacion===null||r.evaluacion_id===filtroEvaluacion)).length}</strong><small>Asignaciones</small></div><div><strong>{seguimiento.filter(r=>r.aula_id===seleccion&&(filtroEvaluacion===null||r.evaluacion_id===filtroEvaluacion)&&r.entregado_en).length}</strong><small>Entregadas</small></div><div><strong>{seguimiento.filter(r=>r.aula_id===seleccion&&(filtroEvaluacion===null||r.evaluacion_id===filtroEvaluacion)&&!r.entregado_en).length}</strong><small>Pendientes</small></div></div>
+        {seguimiento.filter(r=>r.aula_id===seleccion&&(filtroEvaluacion===null||r.evaluacion_id===filtroEvaluacion)).map((r,i)=><div className="atlas-v2-task" key={r.evaluacion_id+"-"+r.alumno_id}><Users size={19}/><span><strong>{r.alumno}</strong><small>{r.titulo} · {!r.entregado_en?"Pendiente":r.nota===null?"Entregada · Sin corregir":"Corregida · Nota "+r.nota}</small></span>{r.entregado_en&&<button className="atlas-v2-primary" onClick={()=>{setNota(r.nota===null?"":String(r.nota));setComentario(r.comentario??"");void abrirCorreccion(r.evaluacion_id,r.alumno_id,r.alumno);}}>Revisar</button>}</div>)}
+        {!seguimiento.some(r=>r.aula_id===seleccion&&(filtroEvaluacion===null||r.evaluacion_id===filtroEvaluacion))&&<p>Sin asignaciones publicadas o estudiantes inscritos en esta selección.</p>}</section>
+        {corregir&&<section className="atlas-v2-card atlas-v2-eval-open"><h2>Corregir · {corregir.alumno}</h2>{corregir.preguntas.map((p,i)=><div key={i}><strong>{i+1}. {p}</strong><p>{corregir.respuestas[i]||"(Sin respuesta)"}</p></div>)}<label>Nota (0 a 10)<input type="number" min="0" max="10" step="0.5" value={nota} onChange={e=>setNota(e.target.value)}/></label><label>Comentario docente<textarea value={comentario} maxLength={1000} rows={3} onChange={e=>setComentario(e.target.value)}/></label><button className="atlas-v2-primary" disabled={ocupado||nota.trim()===""||!Number.isFinite(Number(nota))||Number(nota)<0||Number(nota)>10} onClick={()=>void ejecutar(async()=>{await llamar("/api/aulas/evaluaciones/corregir",{evaluacion_id:corregir.evaluacion_id,alumno_id:corregir.alumno_id,nota:Number(nota),comentario});setCorregir(null);},"Calificación registrada.")}>Guardar nota</button></section>}
+      </>}
       {vista==="pausa"&&usuario.rol==="alumno"&&<><div className="atlas-v2-page-title"><small>APRENDER JUGANDO</small><h1>Pausa y desafíos</h1><p>Un momento para practicar con juegos y actividades cortas.</p></div><div className="atlas-v2-card"><button className="atlas-v2-primary" onClick={()=>setPausa(!pausa)}>{pausa?"Cerrar actividades":"Abrir desafíos"}</button>{pausa&&<><div className="atlas-v2-options"><button onClick={()=>setEtapa("primaria")}>Primaria</button><button onClick={()=>setEtapa("secundaria")}>Secundaria</button></div><PausaAtlas etapa={etapa}/></>}</div></>}
       <footer className="atlas-v2-footer">Atlas · Prototipo local · No apto todavía para datos reales de menores · Sin sincronización offline</footer>
     </main>
