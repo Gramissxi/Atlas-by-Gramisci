@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react";
-import { BookOpen, GraduationCap, LogOut, Upload, Users, ClipboardList, ChevronDown, ChevronUp, LayoutDashboard, FolderOpen, Sparkles, ArrowRight, FileText, Menu, X, Clock3, CheckCircle2, PlayCircle, Download } from "lucide-react";
+import { useState, type FormEvent, type ReactNode } from "react";
+import { BookOpen, GraduationCap, LogOut, Upload, Users, ClipboardList, ChevronDown, ChevronUp, LayoutDashboard, FolderOpen, Sparkles, ArrowRight, FileText, Menu, X, Clock3, CheckCircle2, PlayCircle } from "lucide-react";
 import PausaAtlas from "./PausaAtlas";
 import "./atlas-inicio.css";
 
@@ -142,7 +142,7 @@ export default function AtlasAulas() {
     <small>{documentosElegidos.length?documentosElegidos.length+" documentos seleccionados":"Todos los documentos seleccionados"}</small>
   </div>;
   const elegirClase=()=> <div className="atlas-v2-course-select"><label htmlFor="atlas-clase">Materia / clase</label><select id="atlas-clase" value={seleccion??""} onChange={e=>seleccionarAula(Number(e.target.value))}>{aulas.map(a=><option key={a.id} value={a.id}>{a.materia} · {a.nombre}</option>)}</select></div>;
-  const tarjeta=(titulo:string,descripcion:string,icono:React.ReactNode,v:string,tono:string)=> <button className={"atlas-v2-action "+tono} onClick={()=>navegar(v)}>{icono}<strong>{titulo}</strong><span>{descripcion}</span><ArrowRight size={17}/></button>;
+  const tarjeta=(titulo:string,descripcion:string,icono:ReactNode,v:string,tono:string)=> <button className={"atlas-v2-action "+tono} onClick={()=>navegar(v)}>{icono}<strong>{titulo}</strong><span>{descripcion}</span><ArrowRight size={17}/></button>;
   const secciones=usuario.rol==="docente"?[
     ["inicio","Inicio",<LayoutDashboard size={19}/>],["clases","Mis clases",<Users size={19}/>],["biblioteca","Biblioteca",<FolderOpen size={19}/>],["evaluaciones","Evaluaciones",<ClipboardList size={19}/>],["seguimiento","Seguimiento",<CheckCircle2 size={19}/>]
   ]:[["inicio","Inicio",<LayoutDashboard size={19}/>],["clases","Mis materias",<BookOpen size={19}/>],["tutor","Tutor Atlas",<Sparkles size={19}/>],["practicar","Practicar",<ClipboardList size={19}/>],["pausa","Pausa y desafíos",<PlayCircle size={19}/>]];
