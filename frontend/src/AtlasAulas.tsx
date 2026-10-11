@@ -86,11 +86,12 @@ export default function AtlasAulas() {
     return ()=>window.clearInterval(reloj);
   },[generandoSimulacro]);
   async function llamar(path:string, body?:object, autenticacion=token) {
-    const respuesta = await fetch(API+path,{
+    let respuesta: Response;
+    try { respuesta = await fetch(API+path,{
       method:body?"POST":"GET",
       headers:{"Content-Type":"application/json",...(autenticacion?{"Authorization":"Bearer "+autenticacion}:{})},
       ...(body?{body:JSON.stringify(body)}:{})
-    });
+    }); } catch { throw new Error("No se pudo contactar el servidor Atlas. Comprobá que api_aulas.py siga abierto y visitá http://127.0.0.1:8770/api/aulas/health. Si responde, revisá también la terminal de Vite."); }
     const cuerpo=await respuesta.text();
     let datos: { [key:string]: any };
     try { datos=cuerpo?JSON.parse(cuerpo) as { [key:string]: any }:{}; }
@@ -341,7 +342,7 @@ export default function AtlasAulas() {
         {aulas.length>0&&elegirClase()}
         <div className="atlas-v2-two">
           <section className="atlas-v2-card"><h2>Documentos publicados</h2>{aula?.documentos.length?aula.documentos.map(d=><div className="atlas-v2-file" key={d.id}><FileText size={23}/><span><strong>{d.nombre}</strong><small>{d.paginas} páginas</small></span><button className="atlas-v2-link" disabled={ocupado} onClick={()=>void eliminarDocumento(d.id,d.nombre)}>Eliminar</button></div>):<p>Todavía no hay documentos en esta clase.</p>}</section>
-          <section className="atlas-v2-card"><h2>Subir un PDF</h2><p>Solo los docentes pueden publicar documentos. Tamaño máximo: 10 MB.</p><input type="file" accept=".pdf,application/pdf" onChange={e=>setArchivo(e.target.files?.[0]||null)}/><button className="atlas-v2-primary" disabled={!archivo||ocupado||!aula} onClick={()=>void ejecutar(subir,"PDF publicado e indexado.")}><Upload size={17}/> Publicar documento</button><p className="atlas-v2-note">Los originales todavía no se almacenan para descarga; esta función está pendiente.</p></section>
+          <section className="atlas-v2-card"><h2>Subir un PDF</h2><p>Solo los docentes pueden publicar documentos. Tamaño máximo: 10 MB.</p><input type="file" accept=".pdf,application/pdf" onChange={e=>setArchivo(e.target.files?.[0]||null)}/><button className="atlas-v2-primary" disabled={!archivo||ocupado||!aula} onClick={()=>void ejecutar(subir,"PDF publicado e indexado.")}><Upload size={17}/> Publicar documento</button><p className="atlas-v2-note">Los PDF nuevos se guardan para poder abrirlos y descargarlos. Los cargados antes de esta función necesitan volver a subirse si querés su original.</p></section>
         </div>
       </>}
       {vista==="tutor"&&usuario.rol==="alumno"&&<>
