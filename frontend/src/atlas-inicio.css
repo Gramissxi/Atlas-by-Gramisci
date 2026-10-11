@@ -255,3 +255,29 @@ button.atlas-v2-task:hover{background:#eaf7f2}
 .atlas-v2-invite-code strong{font-size:16px;letter-spacing:1.2px;font-weight:800;color:#095d4f}
 .atlas-v2-copy-code{display:inline-flex;align-items:center;gap:5px;padding:7px 9px;background:#f2faf6;border:1px solid #cee7dc;border-radius:9px;color:#176f5d;font-size:12px;font-weight:650;white-space:nowrap}
 .atlas-v2-copy-code:hover{background:#dcf5e9}
+
+/* Pausa y desafíos: juegos autónomos sin modelo de IA */
+.atlas-desafios-nuevos{width:100%;max-width:900px;margin:0 auto;padding:12px 2px 18px}
+.atlas-desafios-nuevos h2{font-size:28px;margin:8px 0 10px;color:#25464d}
+.atlas-desafios-nuevos>p{line-height:1.6;color:#5b7474}
+.atlas-juego-subtitulo{font-weight:700;font-size:12px;color:#258477!important;letter-spacing:.03em}
+.atlas-juegos-menu{display:flex;flex-wrap:wrap;gap:12px;margin:22px 0 18px}
+.atlas-juegos-menu button{display:inline-flex;align-items:center;gap:9px;border:1px solid #c9e1d7;background:white;border-radius:12px;padding:13px 16px;color:#175c55;font-weight:700;cursor:pointer}
+.atlas-juegos-menu button.seleccionado{background:#dff4ea;border-color:#2b937a}
+.atlas-juego-panel{border:1px solid #d9e9e3;background:#fff;border-radius:16px;padding:clamp(16px,3vw,28px)}
+.atlas-juego-cuerpo h3{font-size:22px;line-height:1.45;color:#21494d;margin:16px 0}
+.atlas-juego-cuerpo>p{line-height:1.6;color:#607976}
+.atlas-juego-opciones{display:grid;gap:10px}
+.atlas-juego-opciones button{background:#fff;border:1px solid #cddfd9;border-radius:11px;padding:13px 16px;text-align:left;color:#26494b;cursor:pointer}
+.atlas-juego-opciones button.correcta{background:#e1f5e9;border-color:#26936b}
+.atlas-juego-opciones button.incorrecta{background:#fff0ea;border-color:#db9f84}
+.atlas-juego-explicacion{margin-top:16px;background:#eff8f3;border-radius:12px;padding:16px;line-height:1.6}
+.atlas-juego-explicacion p{margin:8px 0 14px}
+.atlas-memoria-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin:16px 0 20px}
+.atlas-memoria-grid button{min-height:85px;border:1px solid #cbded8;border-radius:12px;background:#eaf7f1;color:#17554d;cursor:pointer;padding:10px;overflow-wrap:anywhere;font-weight:650}
+.atlas-memoria-grid button.resuelta{background:#d3eee0;border-color:#48aa87}
+.atlas-pintura-herramientas{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:17px 0}
+.atlas-pintura-herramientas label{display:flex;align-items:center;gap:7px;font-size:13px;color:#365e57}
+.atlas-pintura-herramientas input[type=color]{height:34px;width:43px;border:0;background:none}
+.atlas-lienzo{width:100%;height:auto;display:block;aspect-ratio:760/410;touch-action:none;border:2px solid #cbded8;border-radius:10px;background:white;cursor:crosshair}
+@media(max-width:550px){.atlas-memoria-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-juegos-menu{gap:7px}.atlas-juegos-menu button{padding:10px 11px;font-size:12px}}
