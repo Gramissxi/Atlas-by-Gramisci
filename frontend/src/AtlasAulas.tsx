@@ -56,7 +56,6 @@ export default function AtlasAulas() {
   const [segundosEspera,setSegundosEspera] = useState(0);
   const [segundosTutor,setSegundosTutor] = useState(0);
   const [etapa,setEtapa] = useState<"primaria"|"secundaria">("primaria");
-  const [pausa,setPausa] = useState(false);
   const [simulacro,setSimulacro] = useState<string[]>([]);
   const [respuestasSimulacro,setRespuestasSimulacro] = useState<string[]>([]);
   const [simulacroFinalizado,setSimulacroFinalizado] = useState(false);
