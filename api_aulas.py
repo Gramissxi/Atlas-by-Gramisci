@@ -55,6 +55,8 @@ def conexion():
         id INTEGER PRIMARY KEY, aula_id INTEGER NOT NULL REFERENCES aulas(id),
         nombre TEXT NOT NULL, paginas INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS evaluaciones (id INTEGER PRIMARY KEY, aula_id INTEGER NOT NULL REFERENCES aulas(id), titulo TEXT NOT NULL, documentos_ids TEXT NOT NULL, preguntas TEXT NOT NULL, estado TEXT NOT NULL DEFAULT 'borrador' CHECK(estado IN ('borrador','publicada')), creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, publicado_en TEXT);
+    CREATE TABLE IF NOT EXISTS entregas_evaluacion (evaluacion_id INTEGER NOT NULL REFERENCES evaluaciones(id), alumno_id INTEGER NOT NULL REFERENCES usuarios(id), respuestas TEXT NOT NULL, entregado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(evaluacion_id,alumno_id));
     CREATE VIRTUAL TABLE IF NOT EXISTS fragmentos USING fts5(
         documento_id UNINDEXED, aula_id UNINDEXED, pagina UNINDEXED, texto,
         tokenize='unicode61 remove_diacritics 2'
@@ -163,6 +165,13 @@ class Handler(BaseHTTPRequestHandler):
                     for aula in aulas:
                         aula["documentos"] = [dict(x) for x in db.execute("SELECT id,nombre,paginas FROM documentos WHERE aula_id=?",(aula["id"],))]
                 return self.responder({"aulas":aulas})
+            if self.path == "/api/aulas/evaluaciones":
+                with conexion() as db:
+                    if user["rol"] == "docente":
+                        filas=db.execute("""SELECT e.id,e.aula_id,e.titulo,e.estado,e.creado_en,e.publicado_en,a.nombre AS aula_nombre,a.materia FROM evaluaciones e JOIN aulas a ON a.id=e.aula_id WHERE a.docente_id=? ORDER BY e.id DESC""",(user["id"],)).fetchall()
+                    else:
+                        filas=db.execute("""SELECT e.id,e.aula_id,e.titulo,e.estado,e.creado_en,e.publicado_en,a.nombre AS aula_nombre,a.materia,CASE WHEN t.evaluacion_id IS NULL THEN 0 ELSE 1 END AS entregada FROM evaluaciones e JOIN aulas a ON a.id=e.aula_id JOIN inscripciones i ON i.aula_id=a.id AND i.alumno_id=? LEFT JOIN entregas_evaluacion t ON t.evaluacion_id=e.id AND t.alumno_id=? WHERE e.estado='publicada' ORDER BY e.id DESC""",(user["id"],user["id"])).fetchall()
+                return self.responder({"evaluaciones":[dict(x) for x in filas]})
             raise ErrorUsuario("Ruta inexistente",404)
         except ErrorUsuario as e:
             self.responder({"error":str(e)}, e.estado)
@@ -264,6 +273,54 @@ class Handler(BaseHTTPRequestHandler):
                     db.executemany("INSERT INTO fragmentos(documento_id,aula_id,pagina,texto) VALUES (?,?,?,?)",
                             ((doc_id,aula_id,p,t) for p,t in fragmentos))
                 return self.responder({"ok":True,"fragmentos":len(fragmentos)},201)
+            if ruta == "/api/aulas/evaluaciones/crear":
+                if user["rol"]!="docente":raise ErrorUsuario("Solo docentes pueden crear evaluaciones",403)
+                aula_id=int(datos.get("aula_id",0))
+                titulo=texto_corto(datos.get("titulo"),120)
+                ids=datos.get("documentos_ids")
+                preguntas=datos.get("preguntas")
+                if not isinstance(ids,list) or not ids or len(ids)>100 or any(type(x) is not int or x<=0 for x in ids):
+                    raise ErrorUsuario("Seleccioná documentos válidos")
+                ids=list(dict.fromkeys(ids))
+                if not isinstance(preguntas,list) or not 1<=len(preguntas)<=30 or any(not isinstance(q,str) or not 8<=len(q.strip())<=500 for q in preguntas):
+                    raise ErrorUsuario("Agregá preguntas válidas para revisar")
+                with LOCK, conexion() as db:
+                    permiso_aula(db,user,aula_id,docente=True)
+                    existentes={x[0] for x in db.execute("SELECT id FROM documentos WHERE aula_id=?",(aula_id,))}
+                    if not set(ids).issubset(existentes):raise ErrorUsuario("Documento fuera de la clase",403)
+                    nuevo=db.execute("INSERT INTO evaluaciones(aula_id,titulo,documentos_ids,preguntas) VALUES (?,?,?,?)",(aula_id,titulo,json.dumps(ids),json.dumps([p.strip() for p in preguntas],ensure_ascii=False))).lastrowid
+                return self.responder({"id":nuevo,"estado":"borrador"},201)
+            if ruta == "/api/aulas/evaluaciones/publicar":
+                if user["rol"]!="docente":raise ErrorUsuario("Solo docentes pueden publicar",403)
+                evaluacion_id=int(datos.get("evaluacion_id",0))
+                with LOCK, conexion() as db:
+                    e=db.execute("SELECT aula_id,estado FROM evaluaciones WHERE id=?",(evaluacion_id,)).fetchone()
+                    if not e:raise ErrorUsuario("Evaluación inexistente",404)
+                    permiso_aula(db,user,e["aula_id"],docente=True)
+                    if e["estado"]!="borrador":raise ErrorUsuario("Ya publicada")
+                    db.execute("UPDATE evaluaciones SET estado='publicada',publicado_en=CURRENT_TIMESTAMP WHERE id=?",(evaluacion_id,))
+                return self.responder({"ok":True})
+            if ruta == "/api/aulas/evaluaciones/ver":
+                evaluacion_id=int(datos.get("evaluacion_id",0))
+                with conexion() as db:
+                    e=db.execute("SELECT * FROM evaluaciones WHERE id=?",(evaluacion_id,)).fetchone()
+                    if not e:raise ErrorUsuario("Evaluación inexistente",404)
+                    permiso_aula(db,user,e["aula_id"])
+                    if user["rol"]=="alumno" and e["estado"]!="publicada":raise ErrorUsuario("No publicada",403)
+                    return self.responder({"evaluacion":{"id":e["id"],"titulo":e["titulo"],"preguntas":json.loads(e["preguntas"]),"estado":e["estado"]}})
+            if ruta == "/api/aulas/evaluaciones/entregar":
+                if user["rol"]!="alumno":raise ErrorUsuario("Solo estudiantes pueden entregar",403)
+                evaluacion_id=int(datos.get("evaluacion_id",0))
+                respuestas=datos.get("respuestas")
+                with LOCK, conexion() as db:
+                    e=db.execute("SELECT * FROM evaluaciones WHERE id=?",(evaluacion_id,)).fetchone()
+                    if not e:raise ErrorUsuario("Evaluación inexistente",404)
+                    permiso_aula(db,user,e["aula_id"])
+                    if e["estado"]!="publicada":raise ErrorUsuario("No publicada",403)
+                    if not isinstance(respuestas,list) or len(respuestas)!=len(json.loads(e["preguntas"])) or any(not isinstance(x,str) or len(x)>3000 for x in respuestas):raise ErrorUsuario("Respuestas inválidas")
+                    try:db.execute("INSERT INTO entregas_evaluacion(evaluacion_id,alumno_id,respuestas) VALUES (?,?,?)",(evaluacion_id,user["id"],json.dumps(respuestas,ensure_ascii=False)))
+                    except sqlite3.IntegrityError:raise ErrorUsuario("Ya entregada",409)
+                return self.responder({"ok":True},201)
             if ruta == "/api/aulas/consultar":
                 aula_id = int(datos.get("aula_id",0))
                 pregunta = texto_corto(datos.get("pregunta"),400)
