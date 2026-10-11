@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { BookOpen, GraduationCap, LogOut, Upload, Users } from "lucide-react";
+import { BookOpen, GraduationCap, LogOut, Upload, Users, ClipboardList, ChevronDown, ChevronUp } from "lucide-react";
 import PausaAtlas from "./PausaAtlas";
 import "./atlas-inicio.css";
 
@@ -7,7 +7,7 @@ type Rol = "docente" | "alumno";
 type Usuario = { id: number; nombre: string; rol: Rol };
 type Documento = { id: number; nombre: string; paginas: number };
 type Aula = { id: number; nombre: string; materia: string; codigo?: string; documentos: Documento[] };
-type Resultado = { nombre: string; pagina: number; texto: string };
+type Resultado = { documento_id: number; nombre: string; pagina: number; texto: string };
 const API = "/atlas-api";
 
 export default function AtlasAulas() {
@@ -26,6 +26,9 @@ export default function AtlasAulas() {
   const [seleccion,setSeleccion] = useState<number|null>(null);
   const [archivo,setArchivo] = useState<File|null>(null);
   const [pregunta,setPregunta] = useState("");
+  const [documentosElegidos,setDocumentosElegidos] = useState<number[]>([]);
+  const [fuentesAbiertas,setFuentesAbiertas] = useState<number[]>([]);
+  const [vistaDocente,setVistaDocente] = useState<"clases"|"evaluaciones">("clases");
   const [resultados,setResultados] = useState<Resultado[]>([]);
   const [respuestaTutor,setRespuestaTutor] = useState("");
   const [modoTutor,setModoTutor] = useState("");
@@ -34,7 +37,7 @@ export default function AtlasAulas() {
   const [ocupado,setOcupado] = useState(false);
   const [etapa,setEtapa] = useState<"primaria"|"secundaria">("primaria");
   const [pausa,setPausa] = useState(false);
-  const [vistaAlumno,setVistaAlumno] = useState<"inicio"|"clases"|"tutor"|"pausa">("inicio");
+  const [vistaAlumno,setVistaAlumno] = useState<"inicio"|"clases"|"tutor"|"practicar"|"pausa">("inicio");
 
   async function llamar(path:string, body?:object, autenticacion=token) {
     const respuesta = await fetch(API+path,{
@@ -86,14 +89,14 @@ export default function AtlasAulas() {
     e.preventDefault();
     if(seleccion===null)return;
     setOcupado(true);setEstado("");setResultados([]);setRespuestaTutor("");setModoTutor("");setMetricasTutor(null);
-    try{const respuesta=await llamar("/api/aulas/consultar",{aula_id:seleccion,pregunta});setResultados(respuesta.resultados);setRespuestaTutor(respuesta.respuesta || "");setModoTutor(respuesta.modo || "");setMetricasTutor({segundos_generacion:respuesta.segundos_generacion,tokens_generados:respuesta.tokens_generados,truncada:respuesta.truncada});
+    try{const respuesta=await llamar("/api/aulas/consultar",{aula_id:seleccion,pregunta,documentos_ids:documentosElegidos.length?documentosElegidos:aula?.documentos.map(d=>d.id)});setResultados(respuesta.resultados);setRespuestaTutor(respuesta.respuesta || "");setModoTutor(respuesta.modo || "");setMetricasTutor({segundos_generacion:respuesta.segundos_generacion,tokens_generados:respuesta.tokens_generados,truncada:respuesta.truncada});
       if(!respuesta.resultados.length)setEstado(respuesta.detalle || "No encontré coincidencias. Probá con un término del documento.");
     }catch(e){setEstado(e instanceof Error?e.message:"Error al consultar")}
     finally{setOcupado(false)}
   }
   async function salir() {
     try{await llamar("/api/aulas/salir",{});}catch{/* Cierre local aunque el servidor ya esté desconectado */}
-    setUsuario(null);setToken("");setAulas([]);setResultados([]);setRespuestaTutor("");setSeleccion(null);
+    setUsuario(null);setToken("");setAulas([]);setResultados([]);setRespuestaTutor("");setSeleccion(null);setDocumentosElegidos([]);
   }
 
   const aula=aulas.find(a=>a.id===seleccion);
@@ -127,11 +130,13 @@ export default function AtlasAulas() {
     <aside className="atlas-lateral">
       <div className="atlas-logo"><GraduationCap/><strong>Atlas</strong></div>
       <nav aria-label="Navegación">{usuario.rol==="docente" ?
-        <button className="activo"><BookOpen size={18}/> Mis clases</button> :
+        <><button className={vistaDocente==="clases"?"activo":""} onClick={()=>setVistaDocente("clases")}><BookOpen size={18}/> Mis clases</button>
+        <button className={vistaDocente==="evaluaciones"?"activo":""} onClick={()=>setVistaDocente("evaluaciones")}><ClipboardList size={18}/> Evaluaciones</button></> :
         <>
           <button className={vistaAlumno==="inicio"?"activo":""} onClick={()=>setVistaAlumno("inicio")}><GraduationCap size={18}/> Inicio</button>
           <button className={vistaAlumno==="clases"?"activo":""} onClick={()=>setVistaAlumno("clases")}><BookOpen size={18}/> Mis materias</button>
           <button className={vistaAlumno==="tutor"?"activo":""} onClick={()=>setVistaAlumno("tutor")}><BookOpen size={18}/> Tutor Atlas</button>
+          <button className={vistaAlumno==="practicar"?"activo":""} onClick={()=>setVistaAlumno("practicar")}><ClipboardList size={18}/> Practicar</button>
           <button className={vistaAlumno==="pausa"?"activo":""} onClick={()=>setVistaAlumno("pausa")}><BookOpen size={18}/> Pausa y desafíos</button>
         </>}</nav>
       <div className="atlas-lateral-pie"><span>{usuario.nombre} · {usuario.rol}</span><button onClick={()=>void salir()}><LogOut size={17}/> Cerrar sesión</button></div>
@@ -161,11 +166,11 @@ export default function AtlasAulas() {
           <button className="atlas-boton" disabled={ocupado} type="submit">Unirme</button>
         </form>)}
         <p role="status">{estado}</p>
-        {(usuario.rol==="docente" || vistaAlumno==="clases" || vistaAlumno==="tutor") && <div className="atlas-caja atlas-aulas-card" style={{marginTop:20}}>
+        {(usuario.rol==="docente" || vistaAlumno==="clases" || vistaAlumno==="tutor" || vistaAlumno==="practicar") && <div className="atlas-caja atlas-aulas-card" style={{marginTop:20}}>
           <h2>{usuario.rol==="docente"?"Clases que administrás":"Clases a las que pertenecés"}</h2>
-          {!aulas.length?<p>Todavía no hay clases.</p>:<div className="atlas-selector-materias">{aulas.map(a=><button key={a.id} className={seleccion===a.id?"elegida":""} onClick={()=>{setSeleccion(a.id);setResultados([]);setEstado("");}}>{a.nombre} · {a.materia}</button>)}</div>}
+          {!aulas.length?<p>Todavía no hay clases.</p>:<div className="atlas-selector-materias">{aulas.map(a=><button key={a.id} className={seleccion===a.id?"elegida":""} onClick={()=>{setSeleccion(a.id);setDocumentosElegidos([]);setResultados([]);setEstado("");}}>{a.nombre} · {a.materia}</button>)}</div>}
         </div>}
-        {aula && (usuario.rol==="docente" || vistaAlumno==="tutor") && <div className="atlas-caja atlas-aulas-card" style={{marginTop:18}}>
+        {aula && (usuario.rol==="docente" || vistaAlumno==="tutor" || vistaAlumno==="practicar") && <div className="atlas-caja atlas-aulas-card" style={{marginTop:18}}>
           <h2>{aula.nombre} · {aula.materia}</h2>
           {usuario.rol==="docente"&&<p><strong>Código de invitación:</strong> <code>{aula.codigo}</code></p>}
           <h3><BookOpen size={18} style={{display:"inline",verticalAlign:"middle"}}/> Material de la clase</h3>
@@ -174,7 +179,7 @@ export default function AtlasAulas() {
             <h3><Upload size={18}/> Subir PDF para esta clase</h3><input type="file" accept=".pdf,application/pdf" onChange={e=>setArchivo(e.target.files?.[0]||null)}/>
             <button className="atlas-boton" disabled={!archivo||ocupado} onClick={()=>void ejecutar(subir,"PDF indexado y disponible para esta clase.")}>Publicar documento</button>
           </div>}
-          {usuario.rol==="alumno"&&<><h3><span aria-hidden="true">✦ </span>Tu tutor Atlas</h3>
+          {usuario.rol==="alumno" && vistaAlumno==="tutor" && <><h3><span aria-hidden="true">✦ </span>Tu tutor Atlas</h3>
             <form onSubmit={e=>void preguntar(e)}><label htmlFor="pregunta-aula">Tu pregunta</label><div className="atlas-pregunta">
               <input id="pregunta-aula" value={pregunta} onChange={e=>setPregunta(e.target.value)} required placeholder="¿Qué significa este concepto?"/>
               <button disabled={!pregunta.trim()||ocupado||!aula.documentos.length} type="submit">Consultar</button>
@@ -187,7 +192,7 @@ export default function AtlasAulas() {
               {typeof metricasTutor?.segundos_generacion==="number" && <p><small>Generación local: {metricasTutor.segundos_generacion} s{typeof metricasTutor.tokens_generados==="number" ? ` · ${metricasTutor.tokens_generados} tokens` : ""}.</small></p>}
               {modoTutor==="ollama_local"&&<small>Respuesta automática: comprobá las referencias con el documento original.</small>}
             </div>}
-            {resultados.length>0&&<div aria-live="polite"><h3>Fuentes encontradas</h3>{resultados.map((r,i)=><article className="atlas-aviso" style={{marginTop:12}} key={i}><strong>{r.nombre} · página {r.pagina}</strong><p>{r.texto}</p></article>)}</div>}
+            {resultados.length>0&&<div aria-live="polite"><h3>Fuentes encontradas</h3><p>Seleccioná una referencia para ver el fragmento de esa página.</p>{resultados.map((r,i)=><article className="atlas-fuente" key={i}><button type="button" aria-expanded={fuentesAbiertas.includes(i)} onClick={()=>setFuentesAbiertas(prev=>prev.includes(i)?prev.filter(x=>x!==i):[...prev,i])}><span>{r.nombre} · página {r.pagina}</span>{fuentesAbiertas.includes(i)?<ChevronUp size={17}/>:<ChevronDown size={17}/>}</button>{fuentesAbiertas.includes(i)&&<p>{r.texto}</p>}</article>)}</div>}
           </>}
         </div>}
         {usuario.rol==="alumno"&&vistaAlumno==="pausa"&&<div className="atlas-caja" style={{marginTop:18}}>
