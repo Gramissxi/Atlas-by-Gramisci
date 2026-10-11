@@ -272,19 +272,44 @@ class Handler(BaseHTTPRequestHandler):
                 expresion = " OR ".join('"'+t+'"' for t in tokens)
                 with conexion() as db:
                     permiso_aula(db,user,aula_id)
-                    filas = db.execute("""SELECT d.nombre,f.pagina,f.texto FROM fragmentos f
-                    JOIN documentos d ON d.id=CAST(f.documento_id AS INTEGER)
-                    WHERE f.aula_id=? AND fragmentos MATCH ?
-                    ORDER BY bm25(fragmentos) LIMIT 5""",(str(aula_id),expresion)).fetchall()
-                    if not filas:
-                        # Respaldo lexical: ante discrepancias del índice, buscar
-                        # los términos en el texto indexado, siempre dentro del aula.
-                        condiciones = " OR ".join("LOWER(f.texto) LIKE ?" for _ in tokens)
-                        parametros = [str(aula_id)] + ["%" + t + "%" for t in tokens]
-                        filas = db.execute(f"""SELECT d.nombre,f.pagina,f.texto FROM fragmentos f
-                            JOIN documentos d ON d.id=CAST(f.documento_id AS INTEGER)
-                            WHERE f.aula_id=? AND ({condiciones}) LIMIT 5""",parametros).fetchall()
-                return self.responder({"resultados":[dict(r) for r in filas]})
+                    # Consulta primero los fragmentos efectivamente asociados al aula.
+                    # Esto permite distinguir índice vacío, coincidencias y errores.
+                    total = db.execute(
+                        "SELECT COUNT(*) FROM fragmentos WHERE aula_id=?",
+                        (str(aula_id),)
+                    ).fetchone()[0]
+                    if not total:
+                        return self.responder({
+                            "resultados": [],
+                            "estado": "SIN_INDICE",
+                            "detalle": "Hay documentos publicados, pero no hay fragmentos indexados para esta clase. Es necesario reconstruir el índice."
+                        })
+                    # Evitar depender de coincidencias exactas de FTS en la primera
+                    # versión del prototipo: puntaje lexical local con SQLite.
+                    # Solo se buscan fragmentos del aula autorizada.
+                    candidatos = db.execute("""SELECT d.nombre, f.pagina, f.texto
+                        FROM fragmentos f
+                        JOIN documentos d ON d.id=CAST(f.documento_id AS INTEGER)
+                        WHERE f.aula_id=? LIMIT 20000""", (str(aula_id),)).fetchall()
+                    import unicodedata
+                    def normalizar(texto):
+                        return "".join(c for c in unicodedata.normalize("NFKD", texto.casefold())
+                            if not unicodedata.combining(c))
+                    tokens_norm = list(dict.fromkeys(normalizar(t) for t in tokens))
+                    ordenados = []
+                    for candidato in candidatos:
+                        contenido = normalizar(candidato["texto"])
+                        presentes = sum(1 for t in tokens_norm if t in contenido)
+                        if presentes:
+                            ordenados.append((presentes, dict(candidato)))
+                    ordenados.sort(key=lambda x: x[0], reverse=True)
+                    filas = [r for _, r in ordenados[:5]]
+                return self.responder({
+                    "resultados": filas,
+                    "estado": "OK" if filas else "SIN_COINCIDENCIAS",
+                    "fragmentos_disponibles": total
+                })
+
             raise ErrorUsuario("Ruta inexistente",404)
         except ErrorUsuario as e:
             self.responder({"error":str(e)},e.estado)
