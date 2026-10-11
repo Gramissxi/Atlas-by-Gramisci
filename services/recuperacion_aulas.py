@@ -6,7 +6,7 @@ la recuperación semántica real se incorporará en una etapa posterior.
 import re
 import unicodedata
 
-STOP = {"que","como","cual","cuales","por","para","sobre","los","las","una","del","con","donde","segun","es","son","me","explica","el","la","un","de","en","informacion"}
+STOP = {"que","como","cual","cuales","por","para","sobre","los","las","una","del","con","donde","segun","es","son","me","explica","el","la","un","de","en"}
 
 def normalizar(texto):
     return "".join(c for c in unicodedata.normalize("NFKD", texto.casefold()) if not unicodedata.combining(c))
